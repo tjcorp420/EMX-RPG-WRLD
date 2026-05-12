@@ -876,3 +876,158 @@ p {
   .class-grid { grid-template-columns: 1fr 1fr; }
   .actions { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* === EMX Soul Arena v3: Evolution Update UI === */
+.version-chip {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.46);
+  color: var(--ult);
+  font-size: 0.64rem;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(148,255,0,0.14), 0 0 22px rgba(224,37,255,0.14);
+}
+
+.combo-bar {
+  height: 10px;
+  margin-top: 4px;
+}
+
+.combo-fill {
+  background: linear-gradient(90deg, var(--purple), #fff, var(--green));
+  box-shadow: 0 0 18px rgba(224,37,255,0.7), 0 0 18px rgba(148,255,0,0.5);
+}
+
+#comboText {
+  color: var(--ult);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.relic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.relic-chip {
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.075);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.relic-chip.legendary,
+.relic-chip.mythic {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(148,255,0,0.16), rgba(224,37,255,0.18));
+  box-shadow: 0 0 18px rgba(224,37,255,0.18);
+}
+
+.upgrade-card,
+.shop-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.upgrade-card::after,
+.shop-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 5%, rgba(255,255,255,0.08), transparent 52%);
+  transform: translateX(-120%);
+  animation: cardShine 4.8s ease-in-out infinite;
+}
+
+.upgrade-card.common,
+.shop-card.common {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.upgrade-card.rare,
+.shop-card.rare {
+  border-color: rgba(83,194,255,0.55);
+  box-shadow: 0 0 18px rgba(83,194,255,0.14), inset 4px 0 0 rgba(83,194,255,0.55);
+}
+
+.upgrade-card.epic,
+.shop-card.epic {
+  border-color: rgba(224,37,255,0.62);
+  box-shadow: 0 0 22px rgba(224,37,255,0.22), inset 4px 0 0 rgba(224,37,255,0.65);
+}
+
+.upgrade-card.legendary,
+.shop-card.legendary {
+  border-color: rgba(216,255,56,0.72);
+  background: linear-gradient(135deg, rgba(54,55,20,0.95), rgba(40,18,56,0.95));
+  box-shadow: 0 0 26px rgba(216,255,56,0.22), 0 0 30px rgba(224,37,255,0.16), inset 4px 0 0 rgba(216,255,56,0.8);
+}
+
+.upgrade-card.mythic,
+.shop-card.mythic {
+  border-color: rgba(255,255,255,0.84);
+  background: linear-gradient(135deg, rgba(148,255,0,0.2), rgba(255,255,255,0.12), rgba(224,37,255,0.22));
+  box-shadow: 0 0 34px rgba(148,255,0,0.24), 0 0 40px rgba(224,37,255,0.26), inset 0 0 0 1px rgba(255,255,255,0.28);
+  animation: mythicPulse 1.8s ease-in-out infinite;
+}
+
+.reward-type {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.32);
+  color: var(--ult);
+  font-size: 0.62rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  font-weight: 1000;
+}
+
+.elite-name {
+  color: var(--ult);
+  text-shadow: 0 0 14px rgba(216,255,56,0.38);
+}
+
+.shop-ready {
+  color: #070711 !important;
+  background: linear-gradient(135deg, var(--green), #fff, var(--purple));
+  animation: shopPulse 1.35s ease-in-out infinite;
+}
+
+@keyframes cardShine {
+  0%, 45% { transform: translateX(-120%); opacity: 0; }
+  57% { opacity: 0.46; }
+  72%, 100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes mythicPulse {
+  0%, 100% { transform: translateY(0); filter: brightness(1); }
+  50% { transform: translateY(-1px); filter: brightness(1.16); }
+}
+
+@keyframes shopPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(148,255,0,0.24), 0 0 16px rgba(224,37,255,0.2); }
+  50% { box-shadow: 0 0 26px rgba(148,255,0,0.48), 0 0 28px rgba(224,37,255,0.42); }
+}
+
+.action-btn.evolved {
+  border-color: rgba(216,255,56,0.55);
+  box-shadow: 0 0 20px rgba(216,255,56,0.16), 0 10px 25px rgba(0,0,0,0.22);
+}

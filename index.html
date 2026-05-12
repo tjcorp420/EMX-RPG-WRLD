@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>EMX Soul Arena</title>
+  <title>EMX Soul Arena - Evolution Update</title>
 
   <meta name="theme-color" content="#070711" />
+  <meta name="description" content="EMX Soul Arena RPG - Evolution Update" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="EMX Soul Arena" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -69,6 +70,7 @@
       <header class="brand-header">
         <img src="assets/emx-header.png" alt="EMX Soul Arena" class="header-logo" />
         <div class="header-pulse"></div>
+        <div class="version-chip">Evolution Update</div>
       </header>
 
       <header class="top-bar">
@@ -120,6 +122,9 @@
           <p id="playerManaText">Mana 50/50</p>
           <div class="bar ult-bar"><div id="playerUltFill" class="fill ult-fill"></div></div>
           <p id="playerUltText">Ultimate 0/100</p>
+          <div class="bar combo-bar"><div id="comboFill" class="fill combo-fill"></div></div>
+          <p id="comboText">Combo x0 • Overdrive 0%</p>
+          <div id="relicRow" class="relic-row"></div>
         </div>
       </section>
 
@@ -148,8 +153,8 @@
 
     <section id="upgradeScreen" class="overlay hidden">
       <div class="modal">
-        <p class="eyebrow">Victory Reward</p>
-        <h2>Choose One Upgrade</h2>
+        <p id="rewardEyebrow" class="eyebrow">Victory Reward</p>
+        <h2 id="rewardTitle">Choose One Upgrade</h2>
         <div id="upgradeCards" class="upgrade-grid"></div>
       </div>
     </section>
