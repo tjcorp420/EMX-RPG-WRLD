@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soul Arena RPG</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <main class="app">
+    <section id="startScreen" class="screen start-screen">
+      <div class="title-card">
+        <p class="eyebrow">Pocket RPG Battle Arena</p>
+        <h1>Soul Arena</h1>
+        <p class="subtitle">Fight waves, unlock upgrades, beat bosses, and build a broken hero.</p>
+      </div>
+
+      <button id="continueBtn" class="primary hidden">Continue Saved Run</button>
+
+      <h2>Choose Your Class</h2>
+      <div class="class-grid">
+        <button class="class-card" data-class="flame">
+          <span class="class-icon">🧙‍♂️</span>
+          <strong>Flame Mage</strong>
+          <small>Burns enemies and drops meteors.</small>
+        </button>
+        <button class="class-card" data-class="rogue">
+          <span class="class-icon">🥷</span>
+          <strong>Shadow Rogue</strong>
+          <small>Crits, poison, dodges, and combos.</small>
+        </button>
+        <button class="class-card" data-class="storm">
+          <span class="class-icon">⚔️</span>
+          <strong>Storm Knight</strong>
+          <small>Shields, stuns, and lightning strikes.</small>
+        </button>
+        <button class="class-card" data-class="nature">
+          <span class="class-icon">🧝</span>
+          <strong>Nature Healer</strong>
+          <small>Heals, roots, poisons, and survives.</small>
+        </button>
+      </div>
+    </section>
+
+    <section id="battleScreen" class="screen battle-screen hidden">
+      <header class="top-bar">
+        <div>
+          <span class="label">Wave</span>
+          <strong id="waveText">1</strong>
+        </div>
+        <div>
+          <span class="label">Level</span>
+          <strong id="levelText">1</strong>
+        </div>
+        <div>
+          <span class="label">XP</span>
+          <strong id="xpText">0/60</strong>
+        </div>
+        <div>
+          <span class="label">Coins</span>
+          <strong id="coinsText">0</strong>
+        </div>
+      </header>
+
+      <section class="fighter enemy-panel">
+        <div class="fighter-info">
+          <h2 id="enemyName">Enemy</h2>
+          <div id="enemyStatuses" class="status-row"></div>
+        </div>
+        <div id="enemySprite" class="sprite enemy-sprite">🟢</div>
+        <div class="bar-block">
+          <div class="bar hp-bar"><div id="enemyHpFill" class="fill hp-fill"></div></div>
+          <p id="enemyHpText">HP 50/50</p>
+        </div>
+      </section>
+
+      <section id="arena" class="arena">
+        <div id="effectLayer" class="effect-layer"></div>
+        <p id="turnText" class="turn-text">Your turn</p>
+      </section>
+
+      <section class="fighter player-panel">
+        <div class="fighter-info">
+          <h2 id="playerName">Hero</h2>
+          <div id="playerStatuses" class="status-row"></div>
+        </div>
+        <div id="playerSprite" class="sprite player-sprite">🧙‍♂️</div>
+        <div class="bar-block">
+          <div class="bar hp-bar"><div id="playerHpFill" class="fill hp-fill"></div></div>
+          <p id="playerHpText">HP 100/100</p>
+          <div class="bar mana-bar"><div id="playerManaFill" class="fill mana-fill"></div></div>
+          <p id="playerManaText">Mana 50/50</p>
+          <div class="bar ult-bar"><div id="playerUltFill" class="fill ult-fill"></div></div>
+          <p id="playerUltText">Ultimate 0/100</p>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button class="action-btn" data-power="basic"></button>
+        <button class="action-btn" data-power="special"></button>
+        <button class="action-btn" data-power="guard"></button>
+        <button class="action-btn" data-power="heal"></button>
+        <button id="ultimateBtn" class="action-btn ultimate-btn" data-power="ultimate"></button>
+      </section>
+
+      <section class="log-card">
+        <h3>Battle Log</h3>
+        <div id="battleLog" class="battle-log"></div>
+      </section>
+
+      <footer class="footer-actions">
+        <button id="saveBtn" class="small-btn">Save</button>
+        <button id="resetBtn" class="small-btn danger">Delete Save</button>
+      </footer>
+    </section>
+
+    <section id="upgradeScreen" class="overlay hidden">
+      <div class="modal">
+        <p class="eyebrow">Victory Reward</p>
+        <h2>Choose One Upgrade</h2>
+        <div id="upgradeCards" class="upgrade-grid"></div>
+      </div>
+    </section>
+
+    <section id="gameOverScreen" class="overlay hidden">
+      <div class="modal">
+        <p class="eyebrow">Run Ended</p>
+        <h2 id="gameOverTitle">You fell in battle.</h2>
+        <p id="gameOverStats"></p>
+        <button id="restartBtn" class="primary">Start New Run</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
