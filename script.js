@@ -3125,3 +3125,1087 @@ function loadGame() {
 wireEvents();
 updateContinueButton();
 initBoot();
+
+/* === EMX Soul Arena v4: HQ / Meta Progression Update === */
+const HQ_META_SAVE_KEY = "emxSoulArenaMeta_v4";
+
+const HQ_DAILY_MISSIONS = [
+  { id: "dailyKills", type: "kills", mode: "add", title: "Soul Sweep", desc: "Defeat 10 enemies today.", goal: 10, reward: 30 },
+  { id: "dailyBoss", type: "bosses", mode: "add", title: "Boss Breaker", desc: "Defeat 1 boss today.", goal: 1, reward: 45 },
+  { id: "dailyElite", type: "elites", mode: "add", title: "Elite Hunter", desc: "Defeat 3 elite enemies today.", goal: 3, reward: 35 },
+  { id: "dailyWave", type: "wave", mode: "max", title: "Wave Runner", desc: "Reach wave 5 in any run today.", goal: 5, reward: 40 },
+  { id: "dailyUltimate", type: "ultimates", mode: "add", title: "Overdrive Training", desc: "Use 3 ultimates today.", goal: 3, reward: 35 },
+  { id: "dailySpend", type: "spend", mode: "add", title: "Shop Investor", desc: "Spend 75 coins in the Arena Shop today.", goal: 75, reward: 30 }
+];
+
+const HQ_TALENTS = [
+  { id: "vitality", icon: "❤️", title: "Vitality Core", desc: "+12 max HP per rank.", base: 25, step: 14, max: 10 },
+  { id: "focus", icon: "🔷", title: "Mana Circuit", desc: "+6 max mana per rank.", base: 25, step: 14, max: 10 },
+  { id: "arsenal", icon: "⚔️", title: "Weapon Tuning", desc: "+3 basic and special damage per rank.", base: 35, step: 18, max: 10 },
+  { id: "barrier", icon: "🛡️", title: "Starter Barrier", desc: "+8 starting shield per rank.", base: 30, step: 16, max: 10 },
+  { id: "luck", icon: "✨", title: "Crit Calibration", desc: "+2.5% crit chance per rank.", base: 45, step: 24, max: 8 },
+  { id: "drive", icon: "⚡", title: "Overdrive Engine", desc: "+2 ultimate charge gained per rank.", base: 40, step: 22, max: 8 }
+];
+
+const HQ_ACHIEVEMENTS = [
+  { id: "firstBlood", title: "First Blood", desc: "Defeat your first enemy.", reward: 20, test: (m) => m.totalKills >= 1 },
+  { id: "tenKills", title: "Soul Collector", desc: "Defeat 10 enemies total.", reward: 35, test: (m) => m.totalKills >= 10 },
+  { id: "bossOne", title: "Boss Breaker", desc: "Defeat your first boss.", reward: 45, test: (m) => m.totalBosses >= 1 },
+  { id: "waveTen", title: "Wave 10 Club", desc: "Reach wave 10.", reward: 60, test: (m) => m.bestWave >= 10 },
+  { id: "eliteFive", title: "Elite Hunter", desc: "Defeat 5 elite enemies total.", reward: 55, test: (m) => m.totalElites >= 5 },
+  { id: "ultimateFive", title: "Ultimate User", desc: "Use 5 ultimates total.", reward: 45, test: (m) => m.totalUltimates >= 5 },
+  { id: "shopper", title: "Arena Investor", desc: "Spend 250 coins in the shop.", reward: 50, test: (m) => m.totalCoinsSpent >= 250 },
+  { id: "collector", title: "Relic Collector", desc: "Hold 5 boss relics in one run.", reward: 65, test: () => Boolean(state && state.relics && state.relics.length >= 5) },
+  { id: "crystalBank", title: "Crystal Bank", desc: "Earn 250 EMX crystals total.", reward: 75, test: (m) => m.lifetimeCrystals >= 250 },
+  { id: "waveTwenty", title: "Arena Legend", desc: "Reach wave 20.", reward: 120, test: (m) => m.bestWave >= 20 }
+];
+
+function hqTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function hqDefaultMeta() {
+  return {
+    version: 4,
+    crystals: 0,
+    lifetimeCrystals: 0,
+    totalRuns: 0,
+    totalKills: 0,
+    totalBosses: 0,
+    totalElites: 0,
+    totalUltimates: 0,
+    totalCoinsSpent: 0,
+    bestWave: 0,
+    bestLevel: 1,
+    dailyDate: "",
+    missions: [],
+    achievements: {},
+    talents: {}
+  };
+}
+
+function hqMissionTemplateCopy() {
+  return HQ_DAILY_MISSIONS.map((mission) => ({
+    id: mission.id,
+    type: mission.type,
+    mode: mission.mode,
+    title: mission.title,
+    desc: mission.desc,
+    goal: mission.goal,
+    reward: mission.reward,
+    progress: 0,
+    claimed: false
+  }));
+}
+
+function hqLoadMeta() {
+  try {
+    const raw = localStorage.getItem(HQ_META_SAVE_KEY);
+    return hqEnsureMeta(raw ? JSON.parse(raw) : hqDefaultMeta());
+  } catch (error) {
+    return hqEnsureMeta(hqDefaultMeta());
+  }
+}
+
+function hqEnsureMeta(meta) {
+  const base = hqDefaultMeta();
+  const merged = { ...base, ...(meta || {}) };
+  merged.talents = { ...(merged.talents || {}) };
+  merged.achievements = { ...(merged.achievements || {}) };
+
+  for (const talent of HQ_TALENTS) {
+    merged.talents[talent.id] = clamp(Number(merged.talents[talent.id] || 0), 0, talent.max);
+  }
+
+  for (const achievement of HQ_ACHIEVEMENTS) {
+    merged.achievements[achievement.id] = {
+      unlocked: false,
+      claimed: false,
+      ...(merged.achievements[achievement.id] || {})
+    };
+  }
+
+  const today = hqTodayKey();
+  if (merged.dailyDate !== today || !Array.isArray(merged.missions) || merged.missions.length === 0) {
+    merged.dailyDate = today;
+    merged.missions = hqMissionTemplateCopy();
+  } else {
+    const byId = Object.fromEntries(merged.missions.map((mission) => [mission.id, mission]));
+    merged.missions = hqMissionTemplateCopy().map((template) => ({ ...template, ...(byId[template.id] || {}) }));
+  }
+
+  return merged;
+}
+
+let hqMeta = hqLoadMeta();
+
+function hqSaveMeta() {
+  hqMeta = hqEnsureMeta(hqMeta);
+  localStorage.setItem(HQ_META_SAVE_KEY, JSON.stringify(hqMeta));
+}
+
+function hqAwardCrystals(amount, reason = "EMX crystals earned") {
+  const gain = Math.max(0, Math.round(amount || 0));
+  if (!gain) return;
+  hqMeta.crystals += gain;
+  hqMeta.lifetimeCrystals += gain;
+  if (state && typeof addLog === "function") addLog(`${reason}: +${gain} 💎`);
+  hqCheckAchievements();
+  hqSaveMeta();
+  hqRenderPanel();
+  hqRenderIfOpen();
+}
+
+function hqProgressMission(type, amount = 1, mode = "add") {
+  hqMeta = hqEnsureMeta(hqMeta);
+  for (const mission of hqMeta.missions) {
+    if (mission.type !== type || mission.claimed) continue;
+    if (mission.mode === "max" || mode === "max") {
+      mission.progress = Math.max(mission.progress || 0, amount);
+    } else {
+      mission.progress = (mission.progress || 0) + amount;
+    }
+    mission.progress = clamp(mission.progress, 0, mission.goal);
+  }
+  hqSaveMeta();
+  hqRenderPanel();
+  hqRenderIfOpen();
+}
+
+function hqCheckAchievements() {
+  hqMeta = hqEnsureMeta(hqMeta);
+  let changed = false;
+  for (const achievement of HQ_ACHIEVEMENTS) {
+    const entry = hqMeta.achievements[achievement.id];
+    const unlocked = Boolean(achievement.test(hqMeta));
+    if (unlocked && !entry.unlocked) {
+      entry.unlocked = true;
+      changed = true;
+      if (state && typeof addLog === "function") addLog(`Achievement unlocked: ${achievement.title}.`);
+    }
+  }
+  if (changed) hqSaveMeta();
+}
+
+function hqTalentCost(talent) {
+  const rank = hqMeta.talents[talent.id] || 0;
+  return Math.round(talent.base + rank * talent.step + Math.max(0, rank - 3) * 6);
+}
+
+function hqApplyTalentsToState(targetState) {
+  if (!targetState || !targetState.player || !targetState.mods) return;
+  const talents = hqMeta.talents || {};
+  const vitality = talents.vitality || 0;
+  const focus = talents.focus || 0;
+  const arsenal = talents.arsenal || 0;
+  const barrier = talents.barrier || 0;
+  const luck = talents.luck || 0;
+  const drive = talents.drive || 0;
+
+  targetState.player.maxHp += vitality * 12;
+  targetState.player.hp += vitality * 12;
+  targetState.player.maxMana += focus * 6;
+  targetState.player.mana += focus * 6;
+  targetState.mods.basicDamage += arsenal * 3;
+  targetState.mods.specialDamage += arsenal * 3;
+  targetState.mods.startShield += barrier * 8;
+  targetState.mods.critBonus += luck * 0.025;
+  targetState.mods.ultGain += drive * 2;
+}
+
+function hqApplySingleTalentToCurrent(id) {
+  if (!state || !state.player || !state.mods) return;
+  if (id === "vitality") {
+    state.player.maxHp += 12;
+    state.player.hp = clamp(state.player.hp + 12, 0, state.player.maxHp);
+  }
+  if (id === "focus") {
+    state.player.maxMana += 6;
+    state.player.mana = clamp(state.player.mana + 6, 0, state.player.maxMana);
+  }
+  if (id === "arsenal") {
+    state.mods.basicDamage += 3;
+    state.mods.specialDamage += 3;
+  }
+  if (id === "barrier") {
+    state.mods.startShield += 8;
+    state.player.shield += 8;
+  }
+  if (id === "luck") state.mods.critBonus += 0.025;
+  if (id === "drive") state.mods.ultGain += 2;
+}
+
+function hqBuyTalent(id) {
+  const talent = HQ_TALENTS.find((item) => item.id === id);
+  if (!talent) return;
+  const rank = hqMeta.talents[id] || 0;
+  if (rank >= talent.max) return;
+  const cost = hqTalentCost(talent);
+  if (hqMeta.crystals < cost) return;
+
+  hqMeta.crystals -= cost;
+  hqMeta.talents[id] = rank + 1;
+  hqApplySingleTalentToCurrent(id);
+  hqSaveMeta();
+  if (state && typeof addLog === "function") addLog(`${talent.title} upgraded to rank ${rank + 1}.`);
+  if (typeof render === "function") render();
+  hqRenderPanel();
+  hqRenderIfOpen();
+}
+
+function hqClaimMission(id) {
+  hqMeta = hqEnsureMeta(hqMeta);
+  const mission = hqMeta.missions.find((item) => item.id === id);
+  if (!mission || mission.claimed || mission.progress < mission.goal) return;
+  mission.claimed = true;
+  hqAwardCrystals(mission.reward, `Mission complete - ${mission.title}`);
+  hqSaveMeta();
+  hqRenderPanel();
+  hqRenderIfOpen();
+}
+
+function hqClaimAchievement(id) {
+  hqCheckAchievements();
+  const achievement = HQ_ACHIEVEMENTS.find((item) => item.id === id);
+  const entry = hqMeta.achievements[id];
+  if (!achievement || !entry || !entry.unlocked || entry.claimed) return;
+  entry.claimed = true;
+  hqAwardCrystals(achievement.reward, `Achievement claimed - ${achievement.title}`);
+  hqSaveMeta();
+  hqRenderPanel();
+  hqRenderIfOpen();
+}
+
+function hqClaimAllReady() {
+  hqCheckAchievements();
+  for (const mission of hqMeta.missions) {
+    if (!mission.claimed && mission.progress >= mission.goal) hqClaimMission(mission.id);
+  }
+  for (const achievement of HQ_ACHIEVEMENTS) {
+    const entry = hqMeta.achievements[achievement.id];
+    if (entry?.unlocked && !entry.claimed) hqClaimAchievement(achievement.id);
+  }
+  hqRenderIfOpen();
+}
+
+function hqInstallUI() {
+  const start = $("startScreen");
+  if (start && !$("hqStartPanel")) {
+    const panel = document.createElement("section");
+    panel.id = "hqStartPanel";
+    panel.className = "hq-panel";
+    const sectionHeading = start.querySelector(".section-heading");
+    if (sectionHeading) start.insertBefore(panel, sectionHeading);
+    else start.appendChild(panel);
+  }
+
+  const footer = document.querySelector(".footer-actions");
+  if (footer && !$("hqBtn")) {
+    const button = document.createElement("button");
+    button.id = "hqBtn";
+    button.className = "small-btn hq";
+    button.dataset.hqAction = "open";
+    button.textContent = "HQ";
+    footer.insertBefore(button, footer.firstElementChild);
+  }
+
+  if (!$("hqScreen")) {
+    const overlay = document.createElement("section");
+    overlay.id = "hqScreen";
+    overlay.className = "overlay hidden";
+    overlay.innerHTML = `
+      <div class="modal hq-modal">
+        <div class="hq-modal-header">
+          <div>
+            <p class="eyebrow">EMX HQ</p>
+            <h2>Permanent Progress</h2>
+          </div>
+          <button class="close-btn" data-hq-action="close">✕</button>
+        </div>
+        <div id="hqBody"></div>
+      </div>
+    `;
+    document.querySelector("main.app")?.appendChild(overlay);
+  }
+
+  document.addEventListener("click", (event) => {
+    const control = event.target.closest("[data-hq-action]");
+    if (!control) return;
+    const action = control.dataset.hqAction;
+    const id = control.dataset.id;
+
+    if (action === "open") hqOpen();
+    if (action === "close") hqClose();
+    if (action === "buyTalent") hqBuyTalent(id);
+    if (action === "claimMission") hqClaimMission(id);
+    if (action === "claimAchievement") hqClaimAchievement(id);
+    if (action === "claimAll") hqClaimAllReady();
+  });
+
+  hqRenderPanel();
+}
+
+function hqOpen() {
+  hqCheckAchievements();
+  hqRender();
+  $("hqScreen")?.classList.remove("hidden");
+}
+
+function hqClose() {
+  $("hqScreen")?.classList.add("hidden");
+}
+
+function hqRenderPanel() {
+  const panel = $("hqStartPanel");
+  if (!panel) return;
+  hqMeta = hqEnsureMeta(hqMeta);
+  hqCheckAchievements();
+  const readyMissions = hqMeta.missions.filter((mission) => !mission.claimed && mission.progress >= mission.goal).length;
+  const readyAchievements = HQ_ACHIEVEMENTS.filter((achievement) => {
+    const entry = hqMeta.achievements[achievement.id];
+    return entry?.unlocked && !entry.claimed;
+  }).length;
+
+  panel.innerHTML = `
+    <div class="hq-panel-header">
+      <p class="hq-panel-title">EMX HQ</p>
+      <span class="hq-crystal-pill">💎 ${hqMeta.crystals}</span>
+    </div>
+    <div class="hq-stats-grid">
+      <div class="hq-stat"><small>Best Wave</small><strong>${hqMeta.bestWave}</strong></div>
+      <div class="hq-stat"><small>Kills</small><strong>${hqMeta.totalKills}</strong></div>
+      <div class="hq-stat"><small>Bosses</small><strong>${hqMeta.totalBosses}</strong></div>
+      <div class="hq-stat"><small>Runs</small><strong>${hqMeta.totalRuns}</strong></div>
+    </div>
+    <div class="hq-menu-row">
+      <button class="hq-open-btn" data-hq-action="open">HQ Upgrades</button>
+      <button class="hq-open-btn" data-hq-action="open">Missions ${readyMissions ? `(${readyMissions})` : ""}</button>
+      <button class="hq-open-btn" data-hq-action="open">Achievements ${readyAchievements ? `(${readyAchievements})` : ""}</button>
+      <button class="hq-open-btn" data-hq-action="open">Stats</button>
+    </div>
+  `;
+}
+
+function hqRenderIfOpen() {
+  const screen = $("hqScreen");
+  if (screen && !screen.classList.contains("hidden")) hqRender();
+}
+
+function hqRender() {
+  hqMeta = hqEnsureMeta(hqMeta);
+  hqCheckAchievements();
+  const body = $("hqBody");
+  if (!body) return;
+
+  body.innerHTML = `
+    <div class="hq-stats-grid">
+      <div class="hq-stat"><small>Crystals</small><strong>💎 ${hqMeta.crystals}</strong></div>
+      <div class="hq-stat"><small>Best Wave</small><strong>${hqMeta.bestWave}</strong></div>
+      <div class="hq-stat"><small>Total Kills</small><strong>${hqMeta.totalKills}</strong></div>
+      <div class="hq-stat"><small>Bosses</small><strong>${hqMeta.totalBosses}</strong></div>
+    </div>
+    <div class="hq-badge-row">
+      <span class="hq-badge live">Best Level ${hqMeta.bestLevel}</span>
+      <span class="hq-badge">Elites ${hqMeta.totalElites}</span>
+      <span class="hq-badge">Ultimates ${hqMeta.totalUltimates}</span>
+      <span class="hq-badge">Coins Spent ${hqMeta.totalCoinsSpent}</span>
+      <span class="hq-badge">Lifetime 💎 ${hqMeta.lifetimeCrystals}</span>
+    </div>
+    ${hqRenderTalents()}
+    ${hqRenderMissions()}
+    ${hqRenderAchievements()}
+  `;
+}
+
+function hqRenderTalents() {
+  return `
+    <section class="hq-section">
+      <div class="hq-section-title">
+        <div>
+          <h3>Permanent Upgrades</h3>
+          <p>Spend EMX crystals. These boosts apply to new runs and also boost your current run.</p>
+        </div>
+      </div>
+      <div class="hq-card-grid">
+        ${HQ_TALENTS.map((talent) => {
+          const rank = hqMeta.talents[talent.id] || 0;
+          const maxed = rank >= talent.max;
+          const cost = hqTalentCost(talent);
+          const canBuy = hqMeta.crystals >= cost && !maxed;
+          const pct = (rank / talent.max) * 100;
+          return `
+            <div class="hq-card ${maxed ? "hq-complete" : ""}">
+              <div class="hq-card-top">
+                <div><strong>${talent.icon} ${talent.title}</strong><small>${talent.desc}</small></div>
+                <span class="hq-cost">${maxed ? "MAX" : `💎 ${cost}`}</span>
+              </div>
+              <div class="hq-progress"><div class="hq-progress-fill" style="width:${pct}%"></div></div>
+              <small>Rank ${rank}/${talent.max}</small>
+              <button class="${canBuy ? "ready" : ""}" data-hq-action="buyTalent" data-id="${talent.id}" ${canBuy ? "" : "disabled"}>${maxed ? "Maxed" : "Upgrade"}</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function hqRenderMissions() {
+  const ready = hqMeta.missions.some((mission) => !mission.claimed && mission.progress >= mission.goal);
+  return `
+    <section class="hq-section">
+      <div class="hq-section-title">
+        <div>
+          <h3>Daily Missions</h3>
+          <p>Resets daily. Complete missions to earn permanent upgrade crystals.</p>
+        </div>
+        <button class="hq-claim-all-btn" data-hq-action="claimAll" ${ready ? "" : "disabled"}>Claim Ready</button>
+      </div>
+      <div class="hq-card-grid">
+        ${hqMeta.missions.map((mission) => {
+          const done = mission.progress >= mission.goal;
+          const pct = clamp((mission.progress / mission.goal) * 100, 0, 100);
+          return `
+            <div class="hq-card ${done ? "hq-complete" : ""} ${mission.claimed ? "hq-claimed" : ""}">
+              <div class="hq-card-top">
+                <div><strong>${mission.title}</strong><small>${mission.desc}</small></div>
+                <span class="hq-cost">💎 ${mission.reward}</span>
+              </div>
+              <div class="hq-progress"><div class="hq-progress-fill" style="width:${pct}%"></div></div>
+              <small>${mission.progress}/${mission.goal}</small>
+              <button class="${done && !mission.claimed ? "ready" : ""}" data-hq-action="claimMission" data-id="${mission.id}" ${done && !mission.claimed ? "" : "disabled"}>${mission.claimed ? "Claimed" : done ? "Claim" : "In Progress"}</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function hqRenderAchievements() {
+  return `
+    <section class="hq-section">
+      <div class="hq-section-title">
+        <div>
+          <h3>Achievements</h3>
+          <p>Long-term goals that make the game feel like a real mobile RPG.</p>
+        </div>
+      </div>
+      <div class="hq-card-grid">
+        ${HQ_ACHIEVEMENTS.map((achievement) => {
+          const entry = hqMeta.achievements[achievement.id] || { unlocked: false, claimed: false };
+          const unlocked = Boolean(entry.unlocked || achievement.test(hqMeta));
+          const claimed = Boolean(entry.claimed);
+          return `
+            <div class="hq-mini-card ${unlocked ? "hq-complete" : ""} ${claimed ? "hq-claimed" : ""}">
+              <div class="hq-card-top">
+                <div><strong>${unlocked ? "🏆" : "🔒"} ${achievement.title}</strong><small>${achievement.desc}</small></div>
+                <span class="hq-cost">💎 ${achievement.reward}</span>
+              </div>
+              <button class="${unlocked && !claimed ? "ready" : ""}" data-hq-action="claimAchievement" data-id="${achievement.id}" ${unlocked && !claimed ? "" : "disabled"}>${claimed ? "Claimed" : unlocked ? "Claim" : "Locked"}</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+(function hqPatchGame() {
+  const oldMakeState = makeState;
+  makeState = function patchedMakeState(classKey) {
+    const newState = oldMakeState(classKey);
+    hqApplyTalentsToState(newState);
+    return newState;
+  };
+
+  const oldStartNewRun = startNewRun;
+  startNewRun = function patchedStartNewRun(classKey) {
+    hqMeta.totalRuns += 1;
+    hqSaveMeta();
+    oldStartNewRun(classKey);
+    hqRenderPanel();
+  };
+
+  const oldUsePower = usePower;
+  usePower = async function patchedUsePower(key) {
+    let countsUltimate = false;
+    if (state && state.phase === "player" && key === "ultimate") {
+      const power = getPower(key);
+      countsUltimate = Boolean(power && isPowerUnlocked(key) && state.player.mana >= power.cost && state.player.ult >= (power.ultCost || 0));
+    }
+    await oldUsePower(key);
+    if (countsUltimate) {
+      hqMeta.totalUltimates += 1;
+      hqProgressMission("ultimates", 1);
+      hqCheckAchievements();
+      hqSaveMeta();
+    }
+  };
+
+  const oldWinFight = winFight;
+  winFight = function patchedWinFight() {
+    const completedWave = state?.wave || 0;
+    const wasBoss = Boolean(state?.enemy?.isBoss);
+    const wasElite = Boolean(state?.enemy?.elite);
+    oldWinFight();
+
+    hqMeta.totalKills += 1;
+    hqMeta.bestWave = Math.max(hqMeta.bestWave || 0, completedWave);
+    hqMeta.bestLevel = Math.max(hqMeta.bestLevel || 1, state?.level || 1);
+    hqProgressMission("kills", 1);
+    hqProgressMission("wave", completedWave, "max");
+
+    let crystalReward = 1;
+    if (wasElite) {
+      hqMeta.totalElites += 1;
+      hqProgressMission("elites", 1);
+      crystalReward += 2;
+    }
+    if (wasBoss) {
+      hqMeta.totalBosses += 1;
+      hqProgressMission("bosses", 1);
+      crystalReward += 9;
+    }
+
+    hqAwardCrystals(crystalReward, wasBoss ? "Boss bounty" : wasElite ? "Elite bounty" : "Wave bounty");
+    hqCheckAchievements();
+    hqSaveMeta();
+    hqRenderPanel();
+    hqRenderIfOpen();
+    if (typeof render === "function") render();
+  };
+
+  const oldBuyShopItem = buyShopItem;
+  buyShopItem = function patchedBuyShopItem(id) {
+    const before = state?.coins || 0;
+    oldBuyShopItem(id);
+    const after = state?.coins || 0;
+    const spent = Math.max(0, before - after);
+    if (spent > 0) {
+      hqMeta.totalCoinsSpent += spent;
+      hqProgressMission("spend", spent);
+      hqCheckAchievements();
+      hqSaveMeta();
+    }
+  };
+
+  const oldGrantRelic = grantRelic;
+  grantRelic = function patchedGrantRelic(relic) {
+    oldGrantRelic(relic);
+    hqCheckAchievements();
+    hqSaveMeta();
+  };
+
+  const oldGameOver = gameOver;
+  gameOver = function patchedGameOver() {
+    if (state && state.phase !== "gameover") {
+      hqMeta.bestWave = Math.max(hqMeta.bestWave || 0, state.wave || 0);
+      hqMeta.bestLevel = Math.max(hqMeta.bestLevel || 1, state.level || 1);
+      hqCheckAchievements();
+      hqSaveMeta();
+    }
+    oldGameOver();
+    const stats = $("gameOverStats");
+    if (stats) stats.textContent += ` • Best Wave ${hqMeta.bestWave} • 💎 ${hqMeta.crystals}`;
+    hqRenderPanel();
+  };
+
+  const oldRender = render;
+  render = function patchedRender() {
+    oldRender();
+    hqCheckAchievements();
+    hqRenderPanel();
+    hqRenderIfOpen();
+  };
+})();
+
+hqInstallUI();
+hqSaveMeta();
+hqCheckAchievements();
+hqRenderPanel();
+
+/* === EMX Soul Arena v5: Cinematic Combat + Boss Balance Update === */
+const V5_UPDATE_NAME = "Cinematic Combat";
+const V5_CINEMATIC_KEY = "emxSoulArenaCinematic_v5";
+let v5ActivePowerName = "";
+
+const V5_BOSS_TUNING = {
+  goblinKing: { hp: 108, attack: 12, defense: 3 },
+  boneDragon: { hp: 140, attack: 15, defense: 4 },
+  stormTitan: { hp: 170, attack: 17, defense: 5 },
+  voidBeast: { hp: 205, attack: 19, defense: 6 },
+  emxOverlord: { hp: 235, attack: 21, defense: 7 }
+};
+
+const V5_POWER_UPGRADES = [
+  {
+    id: "v5BossBreakerProtocol",
+    rarity: "Rare",
+    title: "Boss Breaker Protocol",
+    desc: "Deal +22% damage to bosses and gain +10 ultimate charge when a boss appears.",
+    apply() {
+      state.mods.bossDamage += 0.22;
+      state.mods.v5BossUlt = (state.mods.v5BossUlt || 0) + 10;
+    }
+  },
+  {
+    id: "v5ArenaTrainingPack",
+    rarity: "Common",
+    title: "Arena Training Pack",
+    desc: "+10 basic damage, +10 skill damage, and +8 max HP.",
+    apply() {
+      state.mods.basicDamage += 10;
+      state.mods.specialDamage += 10;
+      state.player.maxHp += 8;
+      healTarget(state.player, 8, false);
+    }
+  },
+  {
+    id: "v5EmergencyArmor",
+    rarity: "Rare",
+    title: "Emergency Armor",
+    desc: "Start fights with +26 shield and reduce enemy damage by 5%.",
+    apply() {
+      state.mods.startShield += 26;
+      state.mods.damageReduction += 0.05;
+    }
+  },
+  {
+    id: "v5ManaReactor",
+    rarity: "Rare",
+    title: "Mana Reactor",
+    desc: "+20 max mana and +4 mana regeneration per turn.",
+    apply() {
+      state.player.maxMana += 20;
+      state.player.mana = clamp(state.player.mana + 20, 0, state.player.maxMana);
+      state.mods.manaRegen += 4;
+    }
+  },
+  {
+    id: "v5LifeCircuit",
+    rarity: "Epic",
+    title: "Life Circuit",
+    desc: "Heal for +8% of damage dealt and heal +18 HP after kills.",
+    apply() {
+      state.mods.lifeSteal += 0.08;
+      state.mods.killHeal += 18;
+    }
+  },
+  {
+    id: "v5CriticalBattery",
+    rarity: "Epic",
+    title: "Critical Battery",
+    desc: "+12% crit chance. Crits give +8 ultimate charge.",
+    apply() {
+      state.mods.critBonus += 0.12;
+      state.mods.v5CritUlt = (state.mods.v5CritUlt || 0) + 8;
+    }
+  },
+  {
+    id: "v5BossMercyCore",
+    rarity: "Legendary",
+    title: "Boss Mercy Core",
+    desc: "Each boss fight begins with a huge shield, full mana, and +40 ultimate charge.",
+    apply() {
+      state.mods.v5BossShield = (state.mods.v5BossShield || 0) + 55;
+      state.mods.v5BossUlt = (state.mods.v5BossUlt || 0) + 40;
+      state.mods.v5BossFullMana = true;
+    }
+  },
+  {
+    id: "v5CinematicOverdrive",
+    rarity: "Mythic",
+    title: "Cinematic Overdrive",
+    desc: "Ultimates deal +40% damage and all attack animations become full cutscenes.",
+    apply() {
+      state.mods.v5UltimateDamage = (state.mods.v5UltimateDamage || 0) + 0.4;
+      state.mods.v5AlwaysCinematic = true;
+    }
+  }
+];
+
+const V5_SHOP_ITEMS = [
+  {
+    id: "v5BossPrepKit",
+    price: 38,
+    rarity: "Rare",
+    title: "Boss Prep Kit",
+    desc: "Heal 45 HP, gain 45 shield, and gain +25 ultimate charge.",
+    buy() {
+      healTarget(state.player, 45, true);
+      state.player.shield += 45;
+      state.player.ult = clamp(state.player.ult + 25, 0, state.player.maxUlt);
+      addFloatingText("Boss Kit", "good", "player");
+    }
+  },
+  {
+    id: "v5PowerTuning",
+    price: 55,
+    rarity: "Epic",
+    title: "Power Tuning",
+    desc: "+8 damage to basic attacks and skills for this run.",
+    buy() {
+      state.mods.basicDamage += 8;
+      state.mods.specialDamage += 8;
+      addLog("Power tuning installed: +8 basic and skill damage.");
+    }
+  },
+  {
+    id: "v5ShieldBattery",
+    price: 32,
+    rarity: "Common",
+    title: "Shield Battery",
+    desc: "Gain 70 shield immediately.",
+    buy() {
+      state.player.shield += 70;
+      addFloatingText("+70 Shield", "good", "player");
+    }
+  }
+];
+
+(function v5InstallUpgradePool() {
+  for (const upgrade of V5_POWER_UPGRADES) {
+    if (!UPGRADES.some((item) => item.id === upgrade.id)) UPGRADES.push(upgrade);
+  }
+  for (const item of V5_SHOP_ITEMS) {
+    if (!SHOP_ITEMS.some((shopItem) => shopItem.id === item.id)) SHOP_ITEMS.push(item);
+  }
+  for (const item of SHOP_ITEMS) {
+    if (!item.v5Discounted) {
+      item.price = Math.max(8, Math.round(item.price * 0.82));
+      item.v5Discounted = true;
+    }
+  }
+})();
+
+function v5BossBaseFor(base) {
+  const tune = V5_BOSS_TUNING[base.id];
+  return tune ? { ...base, ...tune } : base;
+}
+
+function v5BossStats(wave, base) {
+  const tuned = v5BossBaseFor(base);
+  const scale = 1 + wave * 0.08;
+  return {
+    hp: Math.round(tuned.hp * scale + wave * 2),
+    attack: Math.round(tuned.attack * (1 + wave * 0.045) + wave * 0.25),
+    defense: Math.round(tuned.defense + wave * 0.22)
+  };
+}
+
+function v5NormalStats(wave, base) {
+  const scale = 1 + wave * 0.11;
+  return {
+    hp: Math.round(base.hp * scale + wave * 3),
+    attack: Math.round(base.attack * (1 + wave * 0.09) + wave * 0.45),
+    defense: Math.round(base.defense + wave * 0.34)
+  };
+}
+
+const v5OldCreateEnemy = createEnemy;
+createEnemy = function v5CreateEnemy(wave) {
+  const isBoss = wave % 5 === 0;
+  const baseRaw = isBoss ? BOSSES[((wave / 5) - 1) % BOSSES.length] : choice(ENEMIES);
+  const base = isBoss ? v5BossBaseFor(baseRaw) : baseRaw;
+  const stats = isBoss ? v5BossStats(wave, baseRaw) : v5NormalStats(wave, baseRaw);
+
+  const enemy = {
+    ...base,
+    status: base.status ? { ...base.status } : undefined,
+    hp: stats.hp,
+    maxHp: stats.hp,
+    attack: stats.attack,
+    defense: stats.defense,
+    statuses: [],
+    shield: 0,
+    isBoss,
+    turn: 0,
+    charging: false,
+    elite: false,
+    eliteLabels: [],
+    v5Balanced: true
+  };
+
+  if (!isBoss && wave >= 4 && Math.random() < Math.min(0.18 + wave * 0.014, 0.5)) {
+    if (typeof applyEliteModifiers === "function") applyEliteModifiers(enemy, wave >= 14 && Math.random() < 0.18 ? 2 : 1);
+  }
+
+  if (isBoss && wave >= 15) {
+    enemy.name = `Ascended ${enemy.name}`;
+    enemy.attack += 3;
+    enemy.defense += 2;
+    enemy.shield += 22;
+    enemy.elite = true;
+    enemy.eliteLabels.push("Ascended");
+  }
+
+  return enemy;
+};
+
+function v5EnsureFields() {
+  if (!state) return;
+  state.v5 = state.v5 || {};
+  state.mods.v5BossUlt = state.mods.v5BossUlt || 0;
+  state.mods.v5BossShield = state.mods.v5BossShield || 0;
+  state.mods.v5CritUlt = state.mods.v5CritUlt || 0;
+  state.mods.v5UltimateDamage = state.mods.v5UltimateDamage || 0;
+  state.mods.v5PreBossTraining = state.mods.v5PreBossTraining || 0;
+  v5RebalanceCurrentEnemy();
+}
+
+const v5OldEnsureV3State = ensureV3State;
+ensureV3State = function v5EnsureV3State() {
+  v5OldEnsureV3State();
+  v5EnsureFields();
+};
+
+function v5RebalanceCurrentEnemy() {
+  if (!state || !state.enemy || !state.enemy.isBoss || state.enemy.v5Balanced) return;
+  const baseRaw = BOSSES.find((boss) => boss.id === state.enemy.id) || BOSSES[((state.wave / 5) - 1) % BOSSES.length];
+  const stats = v5BossStats(state.wave || 5, baseRaw);
+  state.enemy.maxHp = Math.min(state.enemy.maxHp, stats.hp);
+  state.enemy.hp = Math.min(state.enemy.hp, state.enemy.maxHp);
+  state.enemy.attack = Math.min(state.enemy.attack, stats.attack);
+  state.enemy.defense = Math.min(state.enemy.defense, stats.defense);
+  state.enemy.v5Balanced = true;
+  if (!state.v5?.rebalanceLogged) {
+    addLog("Cinematic Combat patch balanced this boss fight.");
+    state.v5 = state.v5 || {};
+    state.v5.rebalanceLogged = true;
+  }
+}
+
+function v5ApplyBossAssist() {
+  if (!state || !state.enemy || !state.enemy.isBoss) return;
+  state.v5 = state.v5 || {};
+  if (state.v5.bossAssistWave === state.wave) return;
+  state.v5.bossAssistWave = state.wave;
+
+  const shield = 44 + state.level * 8 + Math.floor(state.wave * 1.5) + (state.mods.v5BossShield || 0);
+  const heal = Math.round(state.player.maxHp * (state.wave <= 5 ? 0.45 : 0.32));
+  const ult = 30 + (state.mods.v5BossUlt || 0);
+
+  healTarget(state.player, heal, true);
+  state.player.shield += shield;
+  state.player.mana = state.mods.v5BossFullMana ? state.player.maxMana : clamp(state.player.mana + Math.round(state.player.maxMana * 0.45), 0, state.player.maxMana);
+  state.player.ult = clamp(state.player.ult + ult, 0, state.player.maxUlt);
+
+  addLog(`Boss prep activated: +${shield} shield, +${ult} ultimate, and a combat heal.`);
+  v5RenderBossBadge();
+  render();
+  saveGame();
+}
+
+const v5OldStartFight = startFight;
+startFight = function v5StartFight() {
+  v5OldStartFight();
+  v5ApplyBossAssist();
+};
+
+const v5OldChooseEnemyMove = chooseEnemyMove;
+chooseEnemyMove = function v5ChooseEnemyMove() {
+  const move = v5OldChooseEnemyMove();
+  if (state?.enemy?.isBoss && move) {
+    if (move.damage) move.damage = Math.max(1, Math.round(move.damage * 0.78));
+    if (move.status && move.status.chance) move.status.chance = Math.max(0.08, move.status.chance * 0.76);
+    if (move.shield) move.shield = Math.round(move.shield * 0.72);
+  }
+  if (state) state.v5EnemyMoveName = move?.name || "Enemy Strike";
+  return move;
+};
+
+const v5OldCalculatePlayerDamage = calculatePlayerDamage;
+calculatePlayerDamage = function v5CalculatePlayerDamage(key, power) {
+  const result = v5OldCalculatePlayerDamage(key, power);
+  if (state?.enemy?.isBoss) {
+    result.damage = Math.round(result.damage * 1.12);
+  }
+  if (power?.ultCost && state?.mods?.v5UltimateDamage) {
+    result.damage = Math.round(result.damage * (1 + state.mods.v5UltimateDamage));
+  }
+  if (result.crit && state?.mods?.v5CritUlt) {
+    state.player.ult = clamp(state.player.ult + state.mods.v5CritUlt, 0, state.player.maxUlt);
+  }
+  return result;
+};
+
+const v5OldWinFight = winFight;
+winFight = function v5WinFight() {
+  const completedWave = state?.wave || 0;
+  const wasBoss = Boolean(state?.enemy?.isBoss);
+  const wasElite = Boolean(state?.enemy?.elite);
+  v5OldWinFight();
+  if (!state || state.phase === "gameover") return;
+
+  const bonusXp = 10 + completedWave * 2 + (wasBoss ? 16 : 0) + (wasElite ? 8 : 0);
+  const bonusCoins = 7 + Math.ceil(completedWave * 1.5) + (wasBoss ? 18 : 0) + (wasElite ? 6 : 0);
+  state.xp += bonusXp;
+  state.coins += bonusCoins;
+  checkLevelUp();
+  addLog(`V5 combat bonus: +${bonusXp} XP, +${bonusCoins} coins.`);
+  render();
+  saveGame();
+};
+
+const v5OldGetUpgradeChoices = getUpgradeChoices;
+getUpgradeChoices = function v5GetUpgradeChoices() {
+  const choices = v5OldGetUpgradeChoices();
+  const targetCount = 4;
+  const pool = getAvailableUpgradePool().filter((item) => !choices.some((chosen) => chosen.id === item.id));
+
+  const completedWave = state?.lastCompletedWave || state?.wave || 0;
+  const preBoss = completedWave > 0 && (completedWave + 1) % 5 === 0;
+  if (preBoss) {
+    const bossHelp = pool.find((item) => ["v5BossBreakerProtocol", "v5EmergencyArmor", "v5BossMercyCore", "bossSlayer", "tough", "startShield"].includes(item.id));
+    if (bossHelp) {
+      choices[0] = bossHelp;
+      pool.splice(pool.findIndex((item) => item.id === bossHelp.id), 1);
+    }
+  }
+
+  while (choices.length < targetCount && pool.length > 0) {
+    const picked = typeof weightedUpgradePick === "function" ? weightedUpgradePick(pool) : choice(pool);
+    choices.push(picked);
+    pool.splice(pool.findIndex((item) => item.id === picked.id), 1);
+  }
+  return choices;
+};
+
+const v5OldUsePower = usePower;
+usePower = async function v5UsePower(key) {
+  const power = state ? getPower(key) : null;
+  v5ActivePowerName = power?.label || "";
+  await v5OldUsePower(key);
+  v5ActivePowerName = "";
+};
+
+function v5CinematicEnabled() {
+  const stored = localStorage.getItem(V5_CINEMATIC_KEY);
+  if (stored === "off") return false;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+  return true;
+}
+
+function v5AnimationProfile(type, enemyMove = false) {
+  const label = v5ActivePowerName || "EMX Strike";
+  const profiles = {
+    slash: { cls: "slash", icon: "⚔️", title: label || "Slash", duration: 620 },
+    fireball: { cls: "fireball", icon: "🔥", title: label || "Fireball", duration: 700 },
+    meteor: { cls: "meteor ultimate", icon: "☄️", title: label || "Inferno Meteor", duration: 940 },
+    lightning: { cls: "lightning", icon: "⚡", title: label || "Thunder Strike", duration: 760 },
+    ice: { cls: "ice", icon: "❄️", title: label || "Ice Breaker", duration: 740 },
+    poison: { cls: "poison", icon: "☠️", title: label || "Poison Strike", duration: 720 },
+    drain: { cls: "drain", icon: "🌀", title: label || "Soul Drain", duration: 750 },
+    nova: { cls: "nova ultimate", icon: "💥", title: label || "Nova Blast", duration: 880 },
+    combo: { cls: "combo", icon: "🗡️", title: label || "Combo Chain", duration: 820 },
+    shadow: { cls: "shadow", icon: "🌑", title: label || "Shadow Cut", duration: 720 },
+    heal: { cls: "heal", icon: "✚", title: label || "Heal", duration: 620 },
+    shield: { cls: "shield", icon: "🛡️", title: label || "Shield", duration: 620 },
+    buff: { cls: "buff", icon: "🔋", title: label || "Power Up", duration: 620 }
+  };
+  if (enemyMove) return { cls: "enemy-cine", icon: "💢", title: state?.v5EnemyMoveName || "Boss Strike", duration: 700 };
+  return profiles[type] || profiles.slash;
+}
+
+function v5EnsureCinematicStage() {
+  let stage = document.getElementById("cinematicStage");
+  if (!stage) {
+    stage = document.createElement("section");
+    stage.id = "cinematicStage";
+    stage.className = "cinematic-stage";
+    stage.setAttribute("aria-hidden", "true");
+    document.body.appendChild(stage);
+  }
+  return stage;
+}
+
+function v5ParticleMarkup(count = 22) {
+  let html = "";
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count;
+    const radius = rand(90, 280);
+    const x = Math.round(Math.cos(angle) * radius + rand(-40, 40));
+    const y = Math.round(Math.sin(angle) * radius + rand(-40, 40));
+    const z = rand(120, 520);
+    const size = rand(4, 12);
+    html += `<span style="--x:${x}px;--y:${y}px;--z:${z}px;--size:${size}px"></span>`;
+  }
+  return html;
+}
+
+async function v5RunCinematic(type, enemyMove = false) {
+  if (!v5CinematicEnabled()) return;
+  if (!state || !state.player || !state.enemy) return;
+
+  const profile = v5AnimationProfile(type, enemyMove);
+  const stage = v5EnsureCinematicStage();
+  const playerIcon = state.player.icon || "🧙‍♂️";
+  const enemyIcon = state.enemy.icon || "👹";
+  const particleCount = profile.cls.includes("ultimate") || state.enemy.isBoss ? 34 : 22;
+
+  stage.className = `cinematic-stage active ${profile.cls}`;
+  stage.innerHTML = `
+    <img src="assets/emx-icon.png" alt="" class="cine-logo-watermark" />
+    <div class="cine-title">${profile.title}</div>
+    <div class="cine-floor"></div>
+    <div class="cine-card cine-player"><div class="cine-sprite">${enemyMove ? enemyIcon : playerIcon}</div></div>
+    <div class="cine-card cine-enemy"><div class="cine-sprite">${enemyMove ? playerIcon : enemyIcon}</div></div>
+    <div class="cine-attack-model"><div class="cine-attack-core">${profile.icon}</div></div>
+    <div class="cine-impact-ring"></div>
+    <div class="cine-particles">${v5ParticleMarkup(particleCount)}</div>
+    <div class="cine-flash"></div>
+  `;
+
+  const battleScreen = $("battleScreen");
+  battleScreen?.classList.add("cinematic-impact");
+  await sleep(profile.duration);
+  stage.classList.remove("active");
+  stage.innerHTML = "";
+  battleScreen?.classList.remove("cinematic-impact");
+  await sleep(70);
+}
+
+const v5OldPlayAnimation = playAnimation;
+playAnimation = async function v5PlayAnimation(type) {
+  const bigAttack = ["meteor", "nova", "combo", "lightning", "fireball", "poison", "drain", "ice", "shadow"].includes(type);
+  const always = Boolean(state?.mods?.v5AlwaysCinematic);
+  if (always || bigAttack || state?.enemy?.isBoss) await v5RunCinematic(type, false);
+  await v5OldPlayAnimation(type);
+};
+
+const v5OldPlayEnemyAnimation = playEnemyAnimation;
+playEnemyAnimation = async function v5PlayEnemyAnimation(big = false) {
+  if (big || state?.enemy?.isBoss) await v5RunCinematic("enemy", true);
+  await v5OldPlayEnemyAnimation(big);
+};
+
+function v5RenderBossBadge() {
+  const panel = document.querySelector(".enemy-panel");
+  if (!panel) return;
+  panel.classList.toggle("v5-boss-softened", Boolean(state?.enemy?.isBoss));
+}
+
+function v5PatchLabels() {
+  document.title = "EMX Soul Arena - Cinematic Combat";
+  const version = document.querySelector(".version-chip");
+  if (version) version.textContent = V5_UPDATE_NAME;
+  const startLogoCard = document.querySelector(".brand-title-card .subtitle");
+  if (startLogoCard) startLogoCard.textContent = "Cinematic attacks, fairer bosses, stronger rewards, and deeper upgrades.";
+  const hqTitle = document.querySelector("#startScreen .brand-title-card");
+  if (hqTitle && !hqTitle.querySelector(".v5-cine-chip")) {
+    const chip = document.createElement("span");
+    chip.className = "v5-cine-chip";
+    chip.textContent = "V5 Cinematic";
+    hqTitle.appendChild(chip);
+  }
+}
+
+const v5OldRender = render;
+render = function v5Render() {
+  v5OldRender();
+  v5RenderBossBadge();
+  v5PatchLabels();
+};
+
+v5PatchLabels();
