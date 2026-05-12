@@ -1,4 +1,5 @@
-const SAVE_KEY = "soulArenaSave_v1";
+const SAVE_KEY = "emxSoulArenaSave_v2";
+const POWER_ORDER = ["basic", "special", "skill1", "skill2", "guard", "heal", "skill3", "ultimate"];
 
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,34 +11,59 @@ const CLASS_DATA = {
   flame: {
     name: "Flame Mage",
     icon: "🧙‍♂️",
-    maxHp: 95,
-    maxMana: 74,
+    maxHp: 96,
+    maxMana: 78,
     powers: {
       basic: {
         icon: "🔥",
         label: "Ember Strike",
-        desc: "Free fire hit.",
+        desc: "Free fire hit. Can burn.",
         cost: 0,
-        damage: 15,
+        damage: 16,
         crit: 0.1,
-        animation: "slash"
+        animation: "slash",
+        status: { type: "burn", chance: 0.22, turns: 2, damage: 4 }
       },
       special: {
         icon: "☄️",
         label: "Fireball",
-        desc: "Big damage + burn chance.",
+        desc: "Heavy hit + burn chance.",
         cost: 9,
-        damage: 27,
-        crit: 0.08,
+        damage: 28,
+        crit: 0.1,
         animation: "fireball",
-        status: { type: "burn", chance: 0.55, turns: 3, damage: 6 }
+        status: { type: "burn", chance: 0.6, turns: 3, damage: 6 }
+      },
+      skill1: {
+        icon: "🐉",
+        label: "Dragon Breath",
+        desc: "Two fire hits. Unlocks L2.",
+        unlock: 2,
+        cost: 14,
+        damage: 18,
+        hits: 2,
+        crit: 0.08,
+        animation: "nova",
+        status: { type: "burn", chance: 0.75, turns: 3, damage: 6 }
+      },
+      skill2: {
+        icon: "🩸",
+        label: "Heat Drain",
+        desc: "Damage, heal, weaken. L4.",
+        unlock: 4,
+        cost: 12,
+        damage: 22,
+        heal: 14,
+        crit: 0.08,
+        animation: "drain",
+        status: { type: "weakness", chance: 0.8, turns: 2 }
       },
       guard: {
         icon: "🛡️",
         label: "Flame Shield",
-        desc: "Shield + punish attackers.",
+        desc: "Shield + burns attackers.",
         cost: 7,
-        shield: 27,
+        shield: 29,
         animation: "shield",
         selfStatus: { type: "flameGuard", turns: 2 }
       },
@@ -46,19 +72,31 @@ const CLASS_DATA = {
         label: "Warm Light",
         desc: "Restore HP.",
         cost: 13,
-        heal: 28,
+        heal: 30,
         animation: "heal"
       },
-      ultimate: {
+      skill3: {
         icon: "🌋",
+        label: "Overheat Nova",
+        desc: "Blast + rage buff. L6.",
+        unlock: 6,
+        cost: 18,
+        damage: 48,
+        crit: 0.12,
+        animation: "meteor",
+        selfStatus: { type: "rage", turns: 2 },
+        status: { type: "burn", chance: 1, turns: 4, damage: 8 }
+      },
+      ultimate: {
+        icon: "💥",
         label: "Inferno Meteor",
         desc: "Huge hit + heavy burn.",
         cost: 0,
         ultCost: 100,
-        damage: 72,
+        damage: 84,
         crit: 0.15,
         animation: "meteor",
-        status: { type: "burn", chance: 1, turns: 4, damage: 9 }
+        status: { type: "burn", chance: 1, turns: 4, damage: 10 }
       }
     }
   },
@@ -66,34 +104,58 @@ const CLASS_DATA = {
     name: "Shadow Rogue",
     icon: "🥷",
     maxHp: 88,
-    maxMana: 60,
+    maxMana: 64,
     powers: {
       basic: {
         icon: "🗡️",
         label: "Backstab",
         desc: "High crit basic attack.",
         cost: 0,
-        damage: 16,
+        damage: 17,
         crit: 0.34,
-        animation: "slash",
-        status: { type: "bleed", chance: 0.22, turns: 3, damage: 4 }
+        animation: "shadow",
+        status: { type: "bleed", chance: 0.26, turns: 3, damage: 4 }
       },
       special: {
         icon: "☠️",
         label: "Poison Blade",
-        desc: "Damage + poison.",
+        desc: "Damage + strong poison.",
         cost: 8,
-        damage: 19,
-        crit: 0.2,
+        damage: 20,
+        crit: 0.22,
         animation: "poison",
-        status: { type: "poison", chance: 0.8, turns: 4, damage: 5 }
+        status: { type: "poison", chance: 0.85, turns: 4, damage: 5 }
+      },
+      skill1: {
+        icon: "🔪",
+        label: "Fan of Knives",
+        desc: "Triple hit + bleed. L2.",
+        unlock: 2,
+        cost: 13,
+        damage: 12,
+        hits: 3,
+        crit: 0.22,
+        animation: "combo",
+        status: { type: "bleed", chance: 0.45, turns: 3, damage: 5 }
+      },
+      skill2: {
+        icon: "👤",
+        label: "Shadow Clone",
+        desc: "Double hit + dodge. L4.",
+        unlock: 4,
+        cost: 15,
+        damage: 23,
+        hits: 2,
+        crit: 0.24,
+        animation: "shadow",
+        selfStatus: { type: "dodge", turns: 1 }
       },
       guard: {
         icon: "💨",
         label: "Smoke Bomb",
-        desc: "Shield + dodge chance.",
+        desc: "Shield + high dodge.",
         cost: 7,
-        shield: 18,
+        shield: 19,
         animation: "shield",
         selfStatus: { type: "dodge", turns: 1 }
       },
@@ -102,36 +164,47 @@ const CLASS_DATA = {
         label: "Patch Up",
         desc: "Small heal, cheap cost.",
         cost: 10,
-        heal: 23,
+        heal: 24,
         animation: "heal"
+      },
+      skill3: {
+        icon: "🎯",
+        label: "Death Mark",
+        desc: "Weakens target. L6.",
+        unlock: 6,
+        cost: 16,
+        damage: 30,
+        crit: 0.35,
+        animation: "drain",
+        status: { type: "weakness", chance: 1, turns: 3 }
       },
       ultimate: {
         icon: "🌑",
         label: "Nightfall Combo",
-        desc: "4 fast crit attacks.",
+        desc: "Five rapid crit hits.",
         cost: 0,
         ultCost: 100,
-        damage: 23,
-        hits: 4,
-        crit: 0.42,
+        damage: 22,
+        hits: 5,
+        crit: 0.45,
         animation: "combo",
-        status: { type: "bleed", chance: 0.55, turns: 3, damage: 5 }
+        status: { type: "bleed", chance: 0.65, turns: 3, damage: 6 }
       }
     }
   },
   storm: {
     name: "Storm Knight",
     icon: "⚔️",
-    maxHp: 112,
-    maxMana: 58,
+    maxHp: 114,
+    maxMana: 60,
     powers: {
       basic: {
         icon: "⚔️",
         label: "Sword Slash",
         desc: "Reliable free attack.",
         cost: 0,
-        damage: 18,
-        crit: 0.12,
+        damage: 19,
+        crit: 0.13,
         animation: "slash"
       },
       special: {
@@ -139,17 +212,39 @@ const CLASS_DATA = {
         label: "Thunder Strike",
         desc: "Lightning + stun chance.",
         cost: 10,
-        damage: 25,
+        damage: 27,
         crit: 0.12,
         animation: "lightning",
-        status: { type: "stun", chance: 0.26, turns: 1 }
+        status: { type: "stun", chance: 0.28, turns: 1 }
+      },
+      skill1: {
+        icon: "❄️",
+        label: "Ice Breaker",
+        desc: "Damage + freeze. L2.",
+        unlock: 2,
+        cost: 12,
+        damage: 25,
+        crit: 0.12,
+        animation: "ice",
+        status: { type: "freeze", chance: 0.38, turns: 1 }
+      },
+      skill2: {
+        icon: "🔋",
+        label: "Overcharge",
+        desc: "Gain rage, mana, shield. L4.",
+        unlock: 4,
+        cost: 5,
+        shield: 18,
+        manaGain: 18,
+        animation: "buff",
+        selfStatus: { type: "rage", turns: 2 }
       },
       guard: {
         icon: "🛡️",
         label: "Parry",
         desc: "Big shield + reflect.",
         cost: 6,
-        shield: 35,
+        shield: 36,
         animation: "shield",
         selfStatus: { type: "parry", turns: 1 }
       },
@@ -158,9 +253,21 @@ const CLASS_DATA = {
         label: "Rally",
         desc: "Heal + small shield.",
         cost: 12,
-        heal: 21,
+        heal: 22,
         shield: 12,
         animation: "heal"
+      },
+      skill3: {
+        icon: "🔗",
+        label: "Chain Bolt",
+        desc: "Triple lightning. L6.",
+        unlock: 6,
+        cost: 18,
+        damage: 18,
+        hits: 3,
+        crit: 0.14,
+        animation: "lightning",
+        status: { type: "stun", chance: 0.42, turns: 1 }
       },
       ultimate: {
         icon: "🌩️",
@@ -168,45 +275,68 @@ const CLASS_DATA = {
         desc: "Massive lightning stun.",
         cost: 0,
         ultCost: 100,
-        damage: 78,
-        crit: 0.12,
+        damage: 86,
+        crit: 0.14,
         animation: "lightning",
-        status: { type: "stun", chance: 0.75, turns: 1 }
+        status: { type: "stun", chance: 0.8, turns: 1 }
       }
     }
   },
   nature: {
     name: "Nature Healer",
     icon: "🧝",
-    maxHp: 104,
-    maxMana: 68,
+    maxHp: 106,
+    maxMana: 72,
     powers: {
       basic: {
         icon: "🌿",
         label: "Vine Whip",
         desc: "Can root enemies.",
         cost: 0,
-        damage: 14,
+        damage: 15,
         crit: 0.1,
         animation: "slash",
-        status: { type: "root", chance: 0.18, turns: 1 }
+        status: { type: "root", chance: 0.22, turns: 1 }
       },
       special: {
         icon: "🍄",
         label: "Poison Spores",
         desc: "Poison damage over time.",
         cost: 8,
-        damage: 17,
+        damage: 18,
         crit: 0.1,
         animation: "poison",
-        status: { type: "poison", chance: 0.9, turns: 4, damage: 6 }
+        status: { type: "poison", chance: 0.92, turns: 4, damage: 6 }
+      },
+      skill1: {
+        icon: "🪤",
+        label: "Root Trap",
+        desc: "Guaranteed root. L2.",
+        unlock: 2,
+        cost: 11,
+        damage: 23,
+        crit: 0.08,
+        animation: "nova",
+        status: { type: "root", chance: 1, turns: 1 }
+      },
+      skill2: {
+        icon: "🪷",
+        label: "Leech Seed",
+        desc: "Damage + heal + poison. L4.",
+        unlock: 4,
+        cost: 14,
+        damage: 22,
+        heal: 18,
+        crit: 0.1,
+        animation: "drain",
+        status: { type: "poison", chance: 0.75, turns: 3, damage: 5 }
       },
       guard: {
         icon: "🌳",
         label: "Barkskin",
         desc: "Shield + regeneration.",
         cost: 6,
-        shield: 28,
+        shield: 29,
         animation: "shield",
         selfStatus: { type: "regen", turns: 3, damage: 6 }
       },
@@ -215,8 +345,19 @@ const CLASS_DATA = {
         label: "Bloom Heal",
         desc: "Strong healing spell.",
         cost: 14,
-        heal: 39,
+        heal: 40,
         animation: "heal"
+      },
+      skill3: {
+        icon: "🌲",
+        label: "Guardian Grove",
+        desc: "Heal, shield, regen. L6.",
+        unlock: 6,
+        cost: 18,
+        heal: 34,
+        shield: 30,
+        animation: "buff",
+        selfStatus: { type: "regen", turns: 4, damage: 7 }
       },
       ultimate: {
         icon: "🌺",
@@ -224,108 +365,120 @@ const CLASS_DATA = {
         desc: "Heal, shield, damage, poison.",
         cost: 0,
         ultCost: 100,
-        damage: 48,
-        heal: 42,
-        shield: 22,
+        damage: 54,
+        heal: 44,
+        shield: 24,
         crit: 0.1,
-        animation: "poison",
-        status: { type: "poison", chance: 1, turns: 4, damage: 8 }
+        animation: "nova",
+        status: { type: "poison", chance: 1, turns: 4, damage: 9 }
       }
     }
   }
 };
 
 const ENEMIES = [
-  { id: "slime", name: "Slime", icon: "🟢", hp: 48, attack: 8, defense: 1 },
-  { id: "goblin", name: "Goblin Sneak", icon: "👺", hp: 55, attack: 10, defense: 2 },
+  { id: "slime", name: "Neon Slime", icon: "🟢", hp: 48, attack: 8, defense: 1 },
+  { id: "goblin", name: "Goblin Hacker", icon: "👺", hp: 55, attack: 10, defense: 2 },
   { id: "skeleton", name: "Bone Rattler", icon: "💀", hp: 60, attack: 12, defense: 2 },
   { id: "wolf", name: "Dire Wolf", icon: "🐺", hp: 64, attack: 13, defense: 1, status: { type: "bleed", chance: 0.22, turns: 3, damage: 4 } },
   { id: "bat", name: "Vampire Bat", icon: "🦇", hp: 52, attack: 11, defense: 1, lifesteal: 0.25 },
   { id: "spider", name: "Poison Spider", icon: "🕷️", hp: 58, attack: 10, defense: 1, status: { type: "poison", chance: 0.35, turns: 3, damage: 4 } },
   { id: "imp", name: "Ice Imp", icon: "👿", hp: 62, attack: 11, defense: 2, status: { type: "freeze", chance: 0.18, turns: 1 } },
-  { id: "golem", name: "Rock Golem", icon: "🗿", hp: 82, attack: 14, defense: 6 }
+  { id: "golem", name: "Rock Golem", icon: "🗿", hp: 82, attack: 14, defense: 6 },
+  { id: "drone", name: "Circuit Drone", icon: "🤖", hp: 72, attack: 15, defense: 3, status: { type: "stun", chance: 0.2, turns: 1 } },
+  { id: "wraith", name: "Void Wraith", icon: "👻", hp: 68, attack: 16, defense: 2, status: { type: "weakness", chance: 0.28, turns: 2 } }
 ];
 
 const BOSSES = [
   { id: "goblinKing", name: "Goblin King", icon: "🤴", hp: 145, attack: 17, defense: 5 },
   { id: "boneDragon", name: "Bone Dragon", icon: "🐉", hp: 180, attack: 20, defense: 6, status: { type: "poison", chance: 0.35, turns: 4, damage: 5 } },
   { id: "stormTitan", name: "Storm Titan", icon: "⛈️", hp: 220, attack: 22, defense: 8, status: { type: "stun", chance: 0.2, turns: 1 } },
-  { id: "voidBeast", name: "Void Beast", icon: "👁️", hp: 260, attack: 24, defense: 9 }
+  { id: "voidBeast", name: "Void Beast", icon: "👁️", hp: 260, attack: 24, defense: 9 },
+  { id: "emxOverlord", name: "EMX Overlord", icon: "💀", hp: 310, attack: 27, defense: 10, status: { type: "weakness", chance: 0.3, turns: 2 } }
 ];
 
 const UPGRADES = [
   {
     id: "hp",
     rarity: "Common",
-    title: "+20 Max HP",
-    desc: "Gain 20 max HP and heal 20 HP.",
+    title: "+22 Max HP",
+    desc: "Gain 22 max HP and heal 22 HP.",
     apply() {
-      state.player.maxHp += 20;
-      healTarget(state.player, 20, false);
+      state.player.maxHp += 22;
+      healTarget(state.player, 22, false);
     }
   },
   {
     id: "mana",
     rarity: "Common",
-    title: "+12 Max Mana",
-    desc: "Gain 12 max mana and refill 12 mana.",
+    title: "+14 Max Mana",
+    desc: "Gain 14 max mana and refill 14 mana.",
     apply() {
-      state.player.maxMana += 12;
-      state.player.mana = clamp(state.player.mana + 12, 0, state.player.maxMana);
+      state.player.maxMana += 14;
+      state.player.mana = clamp(state.player.mana + 14, 0, state.player.maxMana);
     }
   },
   {
     id: "basicPower",
     rarity: "Common",
     title: "Sharper Basic Attack",
-    desc: "Your free basic attack deals +5 damage.",
+    desc: "Your free basic attack deals +6 damage.",
     apply() {
-      state.mods.basicDamage += 5;
+      state.mods.basicDamage += 6;
     }
   },
   {
     id: "specialPower",
     rarity: "Common",
-    title: "Stronger Special",
-    desc: "Your special and ultimate attacks deal +6 damage.",
+    title: "Stronger Skills",
+    desc: "Specials, skills, and ultimates deal +7 damage.",
     apply() {
-      state.mods.specialDamage += 6;
+      state.mods.specialDamage += 7;
     }
   },
   {
     id: "healPower",
     rarity: "Common",
     title: "Better Healing",
-    desc: "Your healing powers restore +9 HP.",
+    desc: "Your healing powers restore +10 HP.",
     apply() {
-      state.mods.healBonus += 9;
+      state.mods.healBonus += 10;
     }
   },
   {
     id: "shieldPower",
     rarity: "Common",
     title: "Thicker Shield",
-    desc: "Your shield powers give +10 shield.",
+    desc: "Your shield powers give +11 shield.",
     apply() {
-      state.mods.shieldBonus += 10;
+      state.mods.shieldBonus += 11;
     }
   },
   {
     id: "crit",
     rarity: "Rare",
     title: "Lucky Strikes",
-    desc: "All attacks gain +8% crit chance.",
+    desc: "All attacks gain +9% crit chance.",
     apply() {
-      state.mods.critBonus += 0.08;
+      state.mods.critBonus += 0.09;
     }
   },
   {
     id: "statusChance",
     rarity: "Rare",
     title: "Status Mastery",
-    desc: "Burn, poison, bleed, stun, and root chances gain +12%.",
+    desc: "Status effect chances gain +13%.",
     apply() {
-      state.mods.statusChance += 0.12;
+      state.mods.statusChance += 0.13;
+    }
+  },
+  {
+    id: "statusDuration",
+    rarity: "Rare",
+    title: "Longer Curses",
+    desc: "Burn, poison, bleed, weakness, and regen last +1 turn.",
+    apply() {
+      state.mods.statusDuration += 1;
     }
   },
   {
@@ -334,8 +487,7 @@ const UPGRADES = [
     title: "Cruel Damage Over Time",
     desc: "Burn, poison, and bleed deal +3 damage each tick.",
     apply() {
-      state.mods.burnDamage += 3;
-      state.mods.poisonDamage += 3;
+      state.mods.statusDamage += 3;
     }
   },
   {
@@ -351,36 +503,108 @@ const UPGRADES = [
     id: "startShield",
     rarity: "Rare",
     title: "Opening Barrier",
-    desc: "Start every fight with +14 shield.",
+    desc: "Start every fight with +15 shield.",
     apply() {
-      state.mods.startShield += 14;
+      state.mods.startShield += 15;
+    }
+  },
+  {
+    id: "combo",
+    rarity: "Epic",
+    title: "Combo Engine",
+    desc: "Damage powers have a 12% chance to hit one extra time.",
+    apply() {
+      state.mods.extraHitChance += 0.12;
     }
   },
   {
     id: "lifeSteal",
     rarity: "Epic",
     title: "Soul Siphon",
-    desc: "Heal for 8% of the damage you deal.",
+    desc: "Heal for 9% of the damage you deal.",
     apply() {
-      state.mods.lifeSteal += 0.08;
+      state.mods.lifeSteal += 0.09;
     }
   },
   {
     id: "tough",
     rarity: "Epic",
     title: "Iron Will",
-    desc: "Enemy attacks deal 8% less damage.",
+    desc: "Enemy attacks deal 9% less damage.",
     apply() {
-      state.mods.damageReduction += 0.08;
+      state.mods.damageReduction += 0.09;
     }
   },
   {
     id: "ultGain",
     rarity: "Epic",
     title: "Ultimate Battery",
-    desc: "Gain +6 extra ultimate charge when using powers.",
+    desc: "Gain +7 extra ultimate charge when using powers.",
     apply() {
-      state.mods.ultGain += 6;
+      state.mods.ultGain += 7;
+    }
+  },
+  {
+    id: "bossSlayer",
+    rarity: "Epic",
+    title: "Boss Slayer",
+    desc: "Deal +18% damage to bosses.",
+    apply() {
+      state.mods.bossDamage += 0.18;
+    }
+  },
+  {
+    id: "phoenix",
+    rarity: "Legendary",
+    title: "Phoenix Backup",
+    desc: "Revive once with 35% HP when you die.",
+    apply() {
+      state.mods.revive += 1;
+    }
+  }
+];
+
+const SHOP_ITEMS = [
+  {
+    id: "potion",
+    price: 28,
+    title: "Mega Potion",
+    desc: "Heal 50 HP right now.",
+    buy() {
+      healTarget(state.player, 50, true);
+    }
+  },
+  {
+    id: "manaCore",
+    price: 30,
+    title: "Mana Core",
+    desc: "Restore 40 mana and gain 20 ultimate charge.",
+    buy() {
+      state.player.mana = clamp(state.player.mana + 40, 0, state.player.maxMana);
+      state.player.ult = clamp(state.player.ult + 20, 0, state.player.maxUlt);
+      addFloatingText("+Mana", "good", "player");
+    }
+  },
+  {
+    id: "armorPlate",
+    price: 48,
+    title: "Armor Plate",
+    desc: "Gain 30 shield and +5 starting shield forever.",
+    buy() {
+      state.player.shield += 30;
+      state.mods.startShield += 5;
+      addFloatingText("+30 Shield", "good", "player");
+    }
+  },
+  {
+    id: "randomRune",
+    price: 80,
+    title: "Random Rune",
+    desc: "Instantly apply a random upgrade.",
+    buy() {
+      const upgrade = choice(UPGRADES);
+      upgrade.apply();
+      addLog(`Shop rune activated: ${upgrade.title}.`);
     }
   }
 ];
@@ -393,13 +617,16 @@ function defaultMods() {
     shieldBonus: 0,
     critBonus: 0,
     statusChance: 0,
-    burnDamage: 0,
-    poisonDamage: 0,
+    statusDuration: 0,
+    statusDamage: 0,
     manaRegen: 6,
     startShield: 0,
     lifeSteal: 0,
     damageReduction: 0,
-    ultGain: 10
+    ultGain: 10,
+    extraHitChance: 0,
+    bossDamage: 0,
+    revive: 0
   };
 }
 
@@ -435,6 +662,26 @@ function makeState(classKey) {
   };
 }
 
+function initBoot() {
+  const boot = $("bootScreen");
+  if (!boot) return;
+  const fill = $("bootFill");
+  const percent = $("bootPercent");
+  let progress = 0;
+  const timer = setInterval(() => {
+    progress = clamp(progress + rand(8, 18), 0, 100);
+    fill.style.width = `${progress}%`;
+    percent.textContent = `Loading ${progress}%`;
+    if (progress >= 100) {
+      clearInterval(timer);
+      setTimeout(() => {
+        boot.classList.add("boot-finished");
+        setTimeout(() => boot.remove(), 500);
+      }, 360);
+    }
+  }, 160);
+}
+
 function startNewRun(classKey) {
   state = makeState(classKey);
   recentLog = [];
@@ -442,7 +689,9 @@ function startNewRun(classKey) {
   $("battleScreen").classList.remove("hidden");
   $("gameOverScreen").classList.add("hidden");
   $("upgradeScreen").classList.add("hidden");
+  $("shopScreen").classList.add("hidden");
   addLog(`You entered the arena as ${CLASS_DATA[classKey].name}.`);
+  addLog("New skills unlock at levels 2, 4, and 6.");
   startFight();
 }
 
@@ -453,7 +702,7 @@ function startFight() {
   state.player.mana = clamp(state.player.mana + 10, 0, state.player.maxMana);
   clearDeadStatuses(state.player);
   addLog(`Wave ${state.wave}: ${state.enemy.name} appears!`);
-  if (state.enemy.isBoss) addLog("Boss battle! Play smart.");
+  if (state.enemy.isBoss) addLog("Boss battle! Watch for special moves.");
   render();
   saveGame();
 }
@@ -462,7 +711,7 @@ function createEnemy(wave) {
   const isBoss = wave % 5 === 0;
   const base = isBoss ? BOSSES[((wave / 5) - 1) % BOSSES.length] : choice(ENEMIES);
   const scale = isBoss ? 1 + wave * 0.18 : 1 + wave * 0.14;
-  const enemy = {
+  return {
     ...base,
     hp: Math.round(base.hp * scale + wave * 4),
     maxHp: Math.round(base.hp * scale + wave * 4),
@@ -474,7 +723,6 @@ function createEnemy(wave) {
     turn: 0,
     charging: false
   };
-  return enemy;
 }
 
 function powers() {
@@ -485,11 +733,27 @@ function getPower(key) {
   return powers()[key];
 }
 
+function getPowerUnlockLevel(key) {
+  const power = getPower(key);
+  return power ? power.unlock || 1 : 99;
+}
+
+function isPowerUnlocked(key) {
+  return state.level >= getPowerUnlockLevel(key);
+}
+
 async function usePower(key) {
   if (!state || state.phase !== "player") return;
 
   const power = getPower(key);
   if (!power) return;
+
+  if (!isPowerUnlocked(key)) {
+    addLog(`${power.label} unlocks at level ${getPowerUnlockLevel(key)}.`);
+    render();
+    return;
+  }
+
   if (state.player.mana < power.cost) {
     addLog("Not enough mana.");
     render();
@@ -517,13 +781,17 @@ async function usePower(key) {
     return;
   }
 
-  await sleep(550);
+  await sleep(520);
   await enemyTurn();
 }
 
 function applyPlayerPower(key, power) {
   let totalDamage = 0;
-  const hits = power.hits || 1;
+  const baseHits = power.hits || 1;
+  const extraHit = power.damage && !power.ultCost && Math.random() < state.mods.extraHitChance ? 1 : 0;
+  const hits = baseHits + extraHit;
+
+  if (extraHit) addLog("Combo Engine added an extra hit!");
 
   for (let i = 0; i < hits; i++) {
     if (power.damage) {
@@ -542,8 +810,17 @@ function applyPlayerPower(key, power) {
   if (power.shield) {
     const amount = power.shield + state.mods.shieldBonus;
     state.player.shield += amount;
-    addFloatingText(`+${amount} Shield`, "good");
+    addFloatingText(`+${amount} Shield`, "good", "player");
     addLog(`You gained ${amount} shield.`);
+  }
+
+  if (power.manaGain) {
+    state.player.mana = clamp(state.player.mana + power.manaGain, 0, state.player.maxMana);
+    addLog(`You restored ${power.manaGain} mana.`);
+  }
+
+  if (power.cleanse) {
+    cleansePlayer();
   }
 
   if (power.selfStatus) {
@@ -553,10 +830,7 @@ function applyPlayerPower(key, power) {
   if (power.status) {
     const chance = clamp(power.status.chance + state.mods.statusChance, 0, 1);
     if (Math.random() < chance) {
-      const status = { ...power.status };
-      if (["burn", "poison", "bleed"].includes(status.type)) {
-        status.damage = (status.damage || 0) + state.mods.burnDamage + state.mods.poisonDamage;
-      }
+      const status = normalizeStatus(power.status);
       addStatus(state.enemy, status);
     }
   }
@@ -570,16 +844,37 @@ function applyPlayerPower(key, power) {
   render();
 }
 
+function normalizeStatus(status) {
+  const clean = {
+    type: status.type,
+    turns: status.turns || 1,
+    damage: status.damage || 0
+  };
+
+  if (["burn", "poison", "bleed", "regen", "weakness", "rage", "flameGuard"].includes(clean.type)) {
+    clean.turns += state.mods.statusDuration;
+  }
+
+  if (["burn", "poison", "bleed"].includes(clean.type)) {
+    clean.damage += state.mods.statusDamage;
+  }
+
+  return clean;
+}
+
 function calculatePlayerDamage(key, power) {
   let base = power.damage;
+
   if (key === "basic") base += state.mods.basicDamage;
-  if (key === "special") base += state.mods.specialDamage;
-  if (key === "ultimate") base += state.mods.basicDamage + state.mods.specialDamage;
+  if (key !== "basic") base += state.mods.specialDamage;
+  if (state.enemy.isBoss) base = Math.round(base * (1 + state.mods.bossDamage));
+  if (hasStatus(state.player, "rage")) base = Math.round(base * 1.25);
+  if (hasStatus(state.enemy, "weakness")) base = Math.round(base * 1.2);
 
   base = Math.round(base * (Math.random() * 0.18 + 0.91));
-  const critChance = clamp((power.crit || 0) + state.mods.critBonus, 0, 0.85);
+  const critChance = clamp((power.crit || 0) + state.mods.critBonus, 0, 0.86);
   const crit = Math.random() < critChance;
-  if (crit) base = Math.round(base * 1.75);
+  if (crit) base = Math.round(base * 1.8);
 
   const defensePenalty = Math.round(state.enemy.defense * 0.4);
   const damage = Math.max(1, base - defensePenalty);
@@ -592,7 +887,7 @@ function damageEnemy(amount) {
   const realDamage = amount - blocked;
   state.enemy.hp = clamp(state.enemy.hp - realDamage, 0, state.enemy.maxHp);
   $("enemySprite").classList.add("hit");
-  setTimeout(() => $("enemySprite").classList.remove("hit"), 350);
+  setTimeout(() => $("enemySprite") && $("enemySprite").classList.remove("hit"), 350);
   addFloatingText(`-${amount}`, "bad", "enemy");
 }
 
@@ -615,7 +910,7 @@ async function enemyTurn() {
 
   if (enemySkipped) {
     addLog(`${state.enemy.name} could not move!`);
-    await sleep(550);
+    await sleep(560);
     startPlayerTurn();
     return;
   }
@@ -631,7 +926,7 @@ async function enemyTurn() {
     return;
   }
 
-  await sleep(550);
+  await sleep(560);
   startPlayerTurn();
 }
 
@@ -670,7 +965,7 @@ function chooseEnemyMove() {
       }
       if (enemy.turn % 3 === 0) {
         enemy.charging = true;
-        return { name: "Storm Charge", damage: 0, big: false, shield: 20 };
+        return { name: "Storm Charge", damage: 0, big: false, shield: 24 };
       }
     }
 
@@ -686,10 +981,15 @@ function chooseEnemyMove() {
       enemy.attack += 2;
       return { name: "Void Hunger", damage: enemy.attack, big: enemy.turn % 2 === 0, status: { type: "weakness", chance: 0.25, turns: 2 } };
     }
+
+    if (enemy.id === "emxOverlord") {
+      if (enemy.turn % 4 === 0) return { name: "System Overload", damage: enemy.attack + 22, big: true, status: { type: "stun", chance: 0.3, turns: 1 } };
+      if (enemy.turn % 2 === 0) return { name: "Neon Curse", damage: enemy.attack + 6, status: { type: "weakness", chance: 0.55, turns: 2 } };
+    }
   }
 
   if (enemy.id === "golem" && Math.random() < 0.35) {
-    return { name: "Stone Guard", damage: 0, shield: 22 };
+    return { name: "Stone Guard", damage: 0, shield: 24 };
   }
 
   if (enemy.status && Math.random() < 0.45) {
@@ -698,6 +998,10 @@ function chooseEnemyMove() {
 
   if (enemy.lifesteal) {
     return { name: "Blood Bite", damage: enemy.attack, lifesteal: enemy.lifesteal };
+  }
+
+  if (Math.random() < 0.16) {
+    return { name: "Heavy Attack", damage: enemy.attack + rand(4, 10), big: true };
   }
 
   return { name: "Attack", damage: enemy.attack };
@@ -717,24 +1021,32 @@ function applyEnemyMove(move) {
   }
 
   if (move.status && Math.random() < (move.status.chance || 1)) {
-    addStatus(state.player, move.status);
+    addStatus(state.player, normalizeEnemyStatus(move.status));
   }
 
   render();
 }
 
+function normalizeEnemyStatus(status) {
+  return {
+    type: status.type,
+    turns: status.turns || 1,
+    damage: status.damage || 0
+  };
+}
+
 function damagePlayer(amount) {
-  if (hasStatus(state.player, "dodge") && Math.random() < 0.65) {
+  if (hasStatus(state.player, "dodge") && Math.random() < 0.68) {
     addFloatingText("DODGE", "good", "player");
     addLog("You dodged the attack.");
     return;
   }
 
-  const reduction = clamp(state.mods.damageReduction, 0, 0.5);
+  const reduction = clamp(state.mods.damageReduction, 0, 0.55);
   let incoming = Math.max(0, Math.round(amount * (1 - reduction)));
 
   if (hasStatus(state.player, "weakness")) {
-    incoming = Math.round(incoming * 1.1);
+    incoming = Math.round(incoming * 1.12);
   }
 
   const blocked = Math.min(state.player.shield, incoming);
@@ -742,22 +1054,30 @@ function damagePlayer(amount) {
   incoming -= blocked;
 
   state.player.hp = clamp(state.player.hp - incoming, 0, state.player.maxHp);
-  state.player.ult = clamp(state.player.ult + 7, 0, state.player.maxUlt);
+  state.player.ult = clamp(state.player.ult + 8, 0, state.player.maxUlt);
 
   $("playerSprite").classList.add("hit");
-  setTimeout(() => $("playerSprite").classList.remove("hit"), 350);
+  setTimeout(() => $("playerSprite") && $("playerSprite").classList.remove("hit"), 350);
 
   if (incoming > 0) addFloatingText(`-${incoming}`, "bad", "player");
   if (blocked > 0) addLog(`Your shield blocked ${blocked} damage.`);
 
   if (hasStatus(state.player, "parry") && blocked > 0) {
-    const reflected = Math.max(3, Math.round(amount * 0.45));
+    const reflected = Math.max(3, Math.round(amount * 0.48));
     damageEnemy(reflected);
     addLog(`Parry reflected ${reflected} damage.`);
   }
 
   if (hasStatus(state.player, "flameGuard") && blocked > 0) {
-    addStatus(state.enemy, { type: "burn", turns: 2, damage: 5 + state.mods.burnDamage });
+    addStatus(state.enemy, { type: "burn", turns: 2, damage: 5 + state.mods.statusDamage });
+  }
+
+  if (state.player.hp <= 0 && state.mods.revive > 0) {
+    state.mods.revive -= 1;
+    state.player.hp = Math.round(state.player.maxHp * 0.35);
+    state.player.shield += 25;
+    addLog("Phoenix Backup activated. You revived!");
+    addFloatingText("REVIVE", "good", "player");
   }
 }
 
@@ -811,6 +1131,13 @@ function clearDeadStatuses(target) {
   target.statuses = target.statuses.filter((status) => status.turns > 0);
 }
 
+function cleansePlayer() {
+  const badStatuses = ["burn", "poison", "bleed", "stun", "freeze", "root", "weakness"];
+  const before = state.player.statuses.length;
+  state.player.statuses = state.player.statuses.filter((status) => !badStatuses.includes(status.type));
+  if (before !== state.player.statuses.length) addLog("Negative effects cleansed.");
+}
+
 function statusLabel(type) {
   const labels = {
     burn: "Burn",
@@ -823,7 +1150,8 @@ function statusLabel(type) {
     parry: "Parry",
     regen: "Regen",
     flameGuard: "Flame Guard",
-    weakness: "Weakness"
+    weakness: "Weakness",
+    rage: "Rage"
   };
   return labels[type] || type;
 }
@@ -840,7 +1168,8 @@ function statusIcon(type) {
     parry: "🛡️",
     regen: "💚",
     flameGuard: "🔥",
-    weakness: "🔻"
+    weakness: "🔻",
+    rage: "💢"
   };
   return icons[type] || "✨";
 }
@@ -857,16 +1186,16 @@ function healTarget(target, amount, showText) {
 
 function winFight() {
   state.phase = "upgrade";
-  const bossBonus = state.enemy.isBoss ? 24 : 0;
-  const xpGain = 28 + state.wave * 6 + bossBonus;
-  const coinGain = 9 + state.wave * 3 + bossBonus;
+  const bossBonus = state.enemy.isBoss ? 28 : 0;
+  const xpGain = 30 + state.wave * 6 + bossBonus;
+  const coinGain = 11 + state.wave * 3 + bossBonus;
 
   state.enemy.hp = 0;
   state.xp += xpGain;
   state.coins += coinGain;
-  state.player.hp = clamp(state.player.hp + Math.round(state.player.maxHp * 0.08), 0, state.player.maxHp);
-  state.player.mana = clamp(state.player.mana + 15, 0, state.player.maxMana);
-  state.player.ult = clamp(state.player.ult + 15, 0, state.player.maxUlt);
+  state.player.hp = clamp(state.player.hp + Math.round(state.player.maxHp * 0.09), 0, state.player.maxHp);
+  state.player.mana = clamp(state.player.mana + 17, 0, state.player.maxMana);
+  state.player.ult = clamp(state.player.ult + 17, 0, state.player.maxUlt);
 
   addLog(`Victory! +${xpGain} XP, +${coinGain} coins.`);
   checkLevelUp();
@@ -880,11 +1209,12 @@ function checkLevelUp() {
     state.xp -= state.xpToLevel;
     state.level += 1;
     state.xpToLevel = Math.round(state.xpToLevel * 1.25 + 18);
-    state.player.maxHp += 8;
-    state.player.maxMana += 4;
+    state.player.maxHp += 9;
+    state.player.maxMana += 5;
     state.player.hp = state.player.maxHp;
     state.player.mana = state.player.maxMana;
     addLog(`Level up! You are now level ${state.level}.`);
+    if ([2, 4, 6].includes(state.level)) addLog("New power unlocked!");
   }
 }
 
@@ -926,6 +1256,50 @@ function chooseUpgrade(id) {
   $("upgradeScreen").classList.add("hidden");
   state.wave += 1;
   startFight();
+}
+
+function showShop() {
+  if (!state || ["enemy", "animating", "upgrade", "gameover"].includes(state.phase)) {
+    addLog("You can only shop on your turn.");
+    render();
+    return;
+  }
+  renderShop();
+  $("shopScreen").classList.remove("hidden");
+}
+
+function renderShop() {
+  const grid = $("shopCards");
+  grid.innerHTML = "";
+
+  for (const item of SHOP_ITEMS) {
+    const canBuy = state.coins >= item.price;
+    const button = document.createElement("button");
+    button.className = "shop-card";
+    button.disabled = !canBuy;
+    button.innerHTML = `
+      <span>${item.price} coins</span>
+      <strong>${item.title}</strong>
+      <small>${item.desc}</small>
+    `;
+    button.addEventListener("click", () => buyShopItem(item.id));
+    grid.appendChild(button);
+  }
+}
+
+function buyShopItem(id) {
+  const item = SHOP_ITEMS.find((shopItem) => shopItem.id === id);
+  if (!item || state.coins < item.price) return;
+  state.coins -= item.price;
+  item.buy();
+  addLog(`Bought ${item.title}.`);
+  render();
+  renderShop();
+  saveGame();
+}
+
+function closeShop() {
+  $("shopScreen").classList.add("hidden");
 }
 
 function gameOver() {
@@ -974,8 +1348,20 @@ function render() {
   for (const button of document.querySelectorAll(".action-btn")) {
     const key = button.dataset.power;
     const power = getPower(key);
-    if (!power) continue;
-    const costText = power.ultCost ? `ULT ${power.ultCost}` : `Mana ${power.cost}`;
+    if (!power) {
+      button.classList.add("hidden");
+      continue;
+    }
+    button.classList.remove("hidden");
+    button.classList.toggle("locked", !isPowerUnlocked(key));
+
+    if (!isPowerUnlocked(key)) {
+      button.innerHTML = `<strong>🔒 ${power.label}</strong><small>Unlocks at Level ${getPowerUnlockLevel(key)}.</small>`;
+      button.disabled = true;
+      continue;
+    }
+
+    const costText = power.ultCost ? `ULT ${power.ultCost}` : power.cost > 0 ? `Mana ${power.cost}` : "Free";
     button.innerHTML = `<strong>${power.icon} ${power.label}</strong><small>${power.desc}<br>${costText}</small>`;
     button.disabled = state.phase !== "player" || state.player.mana < power.cost || Boolean(power.ultCost && state.player.ult < power.ultCost);
   }
@@ -1001,7 +1387,7 @@ function renderStatuses(id, statuses) {
 
 function addLog(message) {
   recentLog.unshift(message);
-  recentLog = recentLog.slice(0, 8);
+  recentLog = recentLog.slice(0, 10);
 }
 
 function renderLog() {
@@ -1011,13 +1397,14 @@ function renderLog() {
 
 function addFloatingText(text, mood = "bad", target = "enemy") {
   const layer = $("effectLayer");
+  if (!layer) return;
   const item = document.createElement("div");
   item.className = `damage-number ${mood}`;
   item.textContent = text;
   item.style.left = target === "player" ? "25%" : "75%";
   item.style.top = target === "player" ? "62%" : "35%";
   layer.appendChild(item);
-  setTimeout(() => item.remove(), 820);
+  setTimeout(() => item.remove(), 860);
 }
 
 async function playAnimation(type) {
@@ -1028,41 +1415,57 @@ async function playAnimation(type) {
   playerSprite.classList.add("attack-lunge");
   setTimeout(() => playerSprite.classList.remove("attack-lunge"), 380);
 
+  if (type === "combo") {
+    battleScreen.classList.add("screen-shake");
+    for (let i = 0; i < 5; i++) {
+      const slash = document.createElement("div");
+      slash.className = i % 2 ? "shadow-effect" : "slash-effect";
+      slash.style.transform = `rotate(${i % 2 ? 35 : -35}deg)`;
+      layer.appendChild(slash);
+      setTimeout(() => slash.remove(), 450);
+      await sleep(95);
+    }
+    battleScreen.classList.remove("screen-shake");
+    return;
+  }
+
   let effect = document.createElement("div");
 
   if (type === "fireball" || type === "meteor") {
     effect.className = "projectile";
-    if (type === "meteor") battleScreen.classList.add("screen-shake");
+    if (type === "meteor") battleScreen.classList.add("screen-shake", "ultimate-flash");
   } else if (type === "lightning") {
     effect.className = "lightning-effect";
     effect.textContent = "⚡";
     battleScreen.classList.add("screen-shake");
+  } else if (type === "ice") {
+    effect.className = "ice-effect";
+    effect.textContent = "❄️";
+  } else if (type === "drain") {
+    effect.className = "drain-effect";
+    effect.textContent = "🌀";
+    battleScreen.classList.add("screen-shake");
+  } else if (type === "nova") {
+    effect.className = "nova-effect";
+    battleScreen.classList.add("screen-shake", "ultimate-flash");
   } else if (type === "heal") {
     effect.className = "heal-effect";
   } else if (type === "shield") {
     effect.className = "shield-effect";
   } else if (type === "poison") {
     effect.className = "poison-effect";
-  } else if (type === "combo") {
-    battleScreen.classList.add("screen-shake");
-    for (let i = 0; i < 4; i++) {
-      const slash = document.createElement("div");
-      slash.className = "slash-effect";
-      slash.style.transform = `rotate(${i % 2 ? 35 : -35}deg)`;
-      layer.appendChild(slash);
-      setTimeout(() => slash.remove(), 450);
-      await sleep(110);
-    }
-    battleScreen.classList.remove("screen-shake");
-    return;
+  } else if (type === "buff") {
+    effect.className = "buff-effect";
+  } else if (type === "shadow") {
+    effect.className = "shadow-effect";
   } else {
     effect.className = "slash-effect";
   }
 
   layer.appendChild(effect);
-  await sleep(type === "meteor" ? 700 : 520);
+  await sleep(type === "meteor" || type === "nova" ? 720 : 540);
   effect.remove();
-  battleScreen.classList.remove("screen-shake");
+  battleScreen.classList.remove("screen-shake", "ultimate-flash");
 }
 
 async function playEnemyAnimation(big = false) {
@@ -1096,7 +1499,9 @@ function loadGame() {
     $("battleScreen").classList.remove("hidden");
     $("gameOverScreen").classList.add("hidden");
     $("upgradeScreen").classList.add("hidden");
+    $("shopScreen").classList.add("hidden");
     if (state.phase === "enemy" || state.phase === "animating") state.phase = "player";
+    if (state.phase === "upgrade") state.phase = "player";
     render();
     return true;
   } catch (error) {
@@ -1113,8 +1518,21 @@ function updateContinueButton() {
 function deleteSave() {
   localStorage.removeItem(SAVE_KEY);
   updateContinueButton();
-  addLog("Save deleted.");
-  render();
+  if (state) {
+    addLog("Save deleted.");
+    render();
+  }
+}
+
+function restartToMenu() {
+  localStorage.removeItem(SAVE_KEY);
+  state = null;
+  recentLog = [];
+  $("battleScreen").classList.add("hidden");
+  $("gameOverScreen").classList.add("hidden");
+  $("shopScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+  updateContinueButton();
 }
 
 function wireEvents() {
@@ -1132,17 +1550,12 @@ function wireEvents() {
     addLog("Game saved.");
     render();
   });
+  $("shopBtn").addEventListener("click", showShop);
+  $("closeShopBtn").addEventListener("click", closeShop);
   $("resetBtn").addEventListener("click", deleteSave);
-  $("restartBtn").addEventListener("click", () => {
-    localStorage.removeItem(SAVE_KEY);
-    state = null;
-    recentLog = [];
-    $("battleScreen").classList.add("hidden");
-    $("gameOverScreen").classList.add("hidden");
-    $("startScreen").classList.remove("hidden");
-    updateContinueButton();
-  });
+  $("restartBtn").addEventListener("click", restartToMenu);
 }
 
 wireEvents();
 updateContinueButton();
+initBoot();

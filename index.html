@@ -2,48 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Soul Arena RPG</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>EMX Soul Arena</title>
+
+  <meta name="theme-color" content="#070711" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="EMX Soul Arena" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="script.js" defer></script>
 </head>
 <body>
+  <section id="bootScreen" class="boot-screen" aria-label="EMX Soul Arena loading screen">
+    <img src="assets/emx-splash.png" alt="EMX Soul Arena" class="boot-art" />
+    <div class="boot-glass">
+      <img src="assets/emx-icon.png" alt="EMX" class="boot-icon" />
+      <p class="boot-title">EMX Soul Arena</p>
+      <div class="boot-progress"><div id="bootFill" class="boot-fill"></div></div>
+      <p id="bootPercent" class="boot-percent">Loading 0%</p>
+    </div>
+  </section>
+
   <main class="app">
     <section id="startScreen" class="screen start-screen">
-      <div class="title-card">
-        <p class="eyebrow">Pocket RPG Battle Arena</p>
-        <h1>Soul Arena</h1>
-        <p class="subtitle">Fight waves, unlock upgrades, beat bosses, and build a broken hero.</p>
+      <div class="brand-title-card">
+        <img src="assets/emx-header.png" alt="EMX Soul Arena" class="start-logo" />
+        <p class="subtitle">Fight waves, unlock powers, stack upgrades, beat bosses, and build a broken hero.</p>
       </div>
 
       <button id="continueBtn" class="primary hidden">Continue Saved Run</button>
 
-      <h2>Choose Your Class</h2>
+      <div class="section-heading">
+        <p class="eyebrow">New Run</p>
+        <h2>Choose Your Class</h2>
+      </div>
+
       <div class="class-grid">
-        <button class="class-card" data-class="flame">
+        <button class="class-card flame" data-class="flame">
           <span class="class-icon">🧙‍♂️</span>
           <strong>Flame Mage</strong>
-          <small>Burns enemies and drops meteors.</small>
+          <small>Burns enemies, drops meteors, and detonates novas.</small>
         </button>
-        <button class="class-card" data-class="rogue">
+        <button class="class-card rogue" data-class="rogue">
           <span class="class-icon">🥷</span>
           <strong>Shadow Rogue</strong>
-          <small>Crits, poison, dodges, and combos.</small>
+          <small>Crits, poisons, bleeds, dodges, and combo chains.</small>
         </button>
-        <button class="class-card" data-class="storm">
+        <button class="class-card storm" data-class="storm">
           <span class="class-icon">⚔️</span>
           <strong>Storm Knight</strong>
-          <small>Shields, stuns, and lightning strikes.</small>
+          <small>Shields, parries, freezes, stuns, and overcharges.</small>
         </button>
-        <button class="class-card" data-class="nature">
+        <button class="class-card nature" data-class="nature">
           <span class="class-icon">🧝</span>
           <strong>Nature Healer</strong>
-          <small>Heals, roots, poisons, and survives.</small>
+          <small>Heals, roots, poisons, leeches, and outlasts bosses.</small>
         </button>
       </div>
     </section>
 
     <section id="battleScreen" class="screen battle-screen hidden">
+      <header class="brand-header">
+        <img src="assets/emx-header.png" alt="EMX Soul Arena" class="header-logo" />
+        <div class="header-pulse"></div>
+      </header>
+
       <header class="top-bar">
         <div>
           <span class="label">Wave</span>
@@ -99,9 +126,12 @@
       <section class="actions">
         <button class="action-btn" data-power="basic"></button>
         <button class="action-btn" data-power="special"></button>
+        <button class="action-btn" data-power="skill1"></button>
+        <button class="action-btn" data-power="skill2"></button>
         <button class="action-btn" data-power="guard"></button>
         <button class="action-btn" data-power="heal"></button>
-        <button id="ultimateBtn" class="action-btn ultimate-btn" data-power="ultimate"></button>
+        <button class="action-btn" data-power="skill3"></button>
+        <button class="action-btn ultimate-btn" data-power="ultimate"></button>
       </section>
 
       <section class="log-card">
@@ -111,6 +141,7 @@
 
       <footer class="footer-actions">
         <button id="saveBtn" class="small-btn">Save</button>
+        <button id="shopBtn" class="small-btn shop">Shop</button>
         <button id="resetBtn" class="small-btn danger">Delete Save</button>
       </footer>
     </section>
@@ -123,8 +154,22 @@
       </div>
     </section>
 
-    <section id="gameOverScreen" class="overlay hidden">
+    <section id="shopScreen" class="overlay hidden">
       <div class="modal">
+        <div class="modal-header-row">
+          <div>
+            <p class="eyebrow">Arena Shop</p>
+            <h2>Spend Your Coins</h2>
+          </div>
+          <button id="closeShopBtn" class="close-btn">✕</button>
+        </div>
+        <div id="shopCards" class="shop-grid"></div>
+      </div>
+    </section>
+
+    <section id="gameOverScreen" class="overlay hidden">
+      <div class="modal game-over-modal">
+        <img src="assets/emx-icon.png" alt="EMX" class="game-over-icon" />
         <p class="eyebrow">Run Ended</p>
         <h2 id="gameOverTitle">You fell in battle.</h2>
         <p id="gameOverStats"></p>
