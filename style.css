@@ -5294,7 +5294,7 @@ p {
 }
 
 
-/* === EMX Soul Arena v13 Button Hotfix styles === */
+/* === EMX Soul Arena Live Build styles === */
 .v12-overlay:not(.show),
 .v12-choice-room:not(.show) {
   pointer-events: none !important;
@@ -5640,4 +5640,17 @@ button, a, .class-card { touch-action: manipulation; }
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+
+/* === EMX Soul Arena v21 Stable Brand Lock === */
+.brand-title-card.v21-brand-locked .v5-cine-chip,
+.brand-title-card.v21-brand-locked .v7-chip,
+.brand-title-card.v21-brand-locked .v7-pill,
+.brand-title-card.v21-brand-locked .version-pill,
+.brand-title-card.v21-brand-locked .update-pill {
+  display: none !important;
+}
+.brand-title-card.v21-brand-locked .subtitle {
+  min-height: auto;
 }

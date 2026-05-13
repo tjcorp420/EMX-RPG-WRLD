@@ -4187,16 +4187,16 @@ function v5RenderBossBadge() {
 }
 
 function v5PatchLabels() {
-  document.title = "EMX Soul Arena - Cinematic Combat";
+  document.title = "EMX Soul Arena";
   const version = document.querySelector(".version-chip");
-  if (version) version.textContent = V5_UPDATE_NAME;
+  if (version) version.textContent = "Live Build";
   const startLogoCard = document.querySelector(".brand-title-card .subtitle");
-  if (startLogoCard) startLogoCard.textContent = "Cinematic attacks, fairer bosses, stronger rewards, and deeper upgrades.";
+  if (startLogoCard) startLogoCard.textContent = "Campaign zones, EMX City, pets, gear, arcade games, multiplayer, and cinematic combat.";
   const hqTitle = document.querySelector("#startScreen .brand-title-card");
   if (hqTitle && !hqTitle.querySelector(".v5-cine-chip")) {
     const chip = document.createElement("span");
     chip.className = "v5-cine-chip";
-    chip.textContent = "V5 Cinematic";
+    chip.textContent = "Cinematic Combat";
     hqTitle.appendChild(chip);
   }
 }
@@ -4879,16 +4879,16 @@ v5PatchLabels();
   }
 
   function v7PatchLabels() {
-    document.title = "EMX Soul Arena - Campaign Update";
+    document.title = "EMX Soul Arena";
     const version = document.querySelector(".version-chip");
-    if (version) version.textContent = V7_UPDATE_NAME;
+    if (version) version.textContent = "Live Build";
     const subtitle = document.querySelector(".brand-title-card .subtitle");
-    if (subtitle) subtitle.textContent = "Campaign zones, permanent gear, skill trees, chests, cinematic combat, HQ upgrades, and multiplayer.";
+    if (subtitle) subtitle.textContent = "Campaign zones, EMX City, pets, gear, arcade games, multiplayer, and cinematic combat.";
     const title = document.querySelector("#startScreen .brand-title-card");
     if (title && !title.querySelector(".v7-chip")) {
       const chip = document.createElement("span");
       chip.className = "v7-chip";
-      chip.textContent = "V7 Campaign";
+      chip.textContent = "Campaign World";
       title.appendChild(chip);
     }
   }
@@ -4917,7 +4917,7 @@ v5PatchLabels();
     const dailyReady = v7Meta.lastDaily !== v7TodayKey();
     panel.innerHTML = `
       <div class="v7-panel-top">
-        <p class="v7-panel-title">Campaign Update</p>
+        <p class="v7-panel-title">Campaign World</p>
         <span class="v7-zone-pill">${activeZone ? `${activeZone.icon} ${activeZone.title}` : "∞ Endless"}</span>
       </div>
       <div class="v7-panel-stats">
@@ -6107,7 +6107,7 @@ v5PatchLabels();
       panel.innerHTML = `
         <div class="v8-hub-top">
           <div>
-            <p class="eyebrow">Collection Update</p>
+            <p class="eyebrow">Collection Locker</p>
             <h3>EMX Locker + Live Rewards</h3>
           </div>
           <span id="v8SeasonChip" class="v8-chip hot">Season 1</span>
@@ -6625,7 +6625,7 @@ v5PatchLabels();
     render = function v8RenderPatched() {
       oldRender();
       const versionChip = document.querySelector(".version-chip");
-      if (versionChip) versionChip.textContent = "Collection Update";
+      if (versionChip) versionChip.textContent = "Live Build";
       const sprite = $("playerSprite");
       if (sprite && state?.v8SkinId) {
         const skin = v8SkinById(state.v8SkinId);
@@ -7017,9 +7017,9 @@ v5PatchLabels();
   }
 
   function v9InstallUI() {
-    document.title = "EMX Soul Arena - Sound + Kid Fun";
+    document.title = "EMX Soul Arena";
     const versionChip = document.querySelector(".version-chip");
-    if (versionChip) versionChip.textContent = V9_UPDATE_NAME;
+    if (versionChip) versionChip.textContent = "Live Build";
     const sub = document.querySelector(".brand-title-card .subtitle");
     if (sub) sub.textContent = "Sound Lab, Kid Mode, Sticker Book, Training Dojo, campaign zones, gear, skins, pets, chests, cinematic combat, HQ upgrades, and multiplayer.";
 
@@ -7454,7 +7454,7 @@ v5PatchLabels();
     render = function v9RenderPatched() {
       oldRender();
       const versionChip = document.querySelector(".version-chip");
-      if (versionChip) versionChip.textContent = V9_UPDATE_NAME;
+      if (versionChip) versionChip.textContent = "Live Build";
       document.body.classList.toggle("v9-kid-active", v9IsKidMode());
       v9RenderStartPanel();
       v9RenderSoundStatus();
@@ -7808,9 +7808,9 @@ v5PatchLabels();
   }
 
   function v10InstallUI() {
-    document.title = "EMX Soul Arena - Audio + Arcade";
+    document.title = "EMX Soul Arena";
     const versionChip = document.querySelector(".version-chip");
-    if (versionChip) versionChip.textContent = V10_UPDATE_NAME;
+    if (versionChip) versionChip.textContent = "Live Build";
 
     const start = $("startScreen");
     if (start && !$("v10FunPanel")) {
@@ -8299,7 +8299,7 @@ v5PatchLabels();
       render = function v10RenderPatched() {
         oldRenderFn();
         const versionChip = document.querySelector(".version-chip");
-        if (versionChip) versionChip.textContent = V10_UPDATE_NAME;
+        if (versionChip) versionChip.textContent = "Live Build";
         v10InstallUI();
         v10RenderPanel();
         v10RenderAudioStatus();
@@ -8648,11 +8648,11 @@ v5PatchLabels();
   }
 
   function v11InstallUI() {
-    document.title = "EMX Soul Arena - Guide + Adventure";
+    document.title = "EMX Soul Arena";
     const versionChip = document.querySelector(".version-chip");
-    if (versionChip) versionChip.textContent = V11_UPDATE_NAME;
+    if (versionChip) versionChip.textContent = "Live Build";
     const sub = document.querySelector(".brand-title-card .subtitle");
-    if (sub) sub.textContent = "Guided tutorial, Next Goal help, quest board, power guide, boss warnings, adventure rooms, gear forge, arcade, campaign, pets, skins, and multiplayer.";
+    if (sub) sub.textContent = "Campaign zones, EMX City, pets, gear, arcade games, multiplayer, and cinematic combat.";
 
     const start = $("startScreen");
     if (start && !$("v11GuidePanel")) {
@@ -8771,7 +8771,7 @@ v5PatchLabels();
     panel.innerHTML = `
       <div class="v11-panel-head">
         <div>
-          <p class="eyebrow">V11 Guide + Adventure</p>
+          <p class="eyebrow">Guide + Adventure</p>
           <h3>${goal.icon} ${v11Escape(goal.title)}</h3>
         </div>
         <span class="v11-pill">${complete}/${V11_QUESTS.length} Quests</span>
@@ -9374,7 +9374,7 @@ v5PatchLabels();
     render = function v11RenderPatched() {
       oldRender();
       const versionChip = document.querySelector(".version-chip");
-      if (versionChip) versionChip.textContent = V11_UPDATE_NAME;
+      if (versionChip) versionChip.textContent = "Live Build";
       v11InstallUI();
       v11RenderNpc();
       if (state?.phase === "player") v11MaybeBossWarning();
@@ -9847,9 +9847,9 @@ v5PatchLabels();
     }
 
     const subtitle = document.querySelector(".brand-title-card .subtitle");
-    if (subtitle) subtitle.textContent = "Story World update: tap EMX City buildings, climb Neon Tower, bond with pets, build loadouts, collect stickers, clear weekly events, and follow clear goals.";
+    if (subtitle) subtitle.textContent = "Campaign zones, EMX City, pets, gear, arcade games, multiplayer, and cinematic combat.";
     const versionChip = document.querySelector(".version-chip");
-    if (versionChip) versionChip.textContent = V12_UPDATE_NAME;
+    if (versionChip) versionChip.textContent = "Live Build";
   }
 
   function v12RenderCityPanel() {
@@ -9858,7 +9858,7 @@ v5PatchLabels();
     return `
       <div class="v12-panel-head">
         <div>
-          <p class="eyebrow">V12 Story World</p>
+          <p class="eyebrow">Story World</p>
           <h2>EMX City Hub</h2>
           <p class="v12-panel-copy">Clear instructions: tap a building, read the goal, then play. Kids can use Story, Pet Lab, Sticker Book, Tower, Arcade, and Tutorial without guessing.</p>
         </div>
@@ -10515,7 +10515,7 @@ v5PatchLabels();
       oldRender();
       v12InstallUI();
       const versionChip = document.querySelector(".version-chip");
-      if (versionChip) versionChip.textContent = V12_UPDATE_NAME;
+      if (versionChip) versionChip.textContent = "Live Build";
       // V13 hotfix: do not disable battle buttons because of loadout.
       // Loadouts still save on the profile screen, but powers remain tappable when unlocked.
       v12RefreshCityPanel();
@@ -10659,7 +10659,7 @@ v5PatchLabels();
   // Mark the version chip so users know the hotfix deployed.
   function markVersion() {
     qa(".version-chip").forEach((chip) => {
-      chip.textContent = "v13 Button Hotfix";
+      chip.textContent = "Live Build";
     });
   }
   markVersion();

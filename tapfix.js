@@ -1,11 +1,11 @@
-/* EMX Soul Arena v18 - Stable Tap Router
+/* EMX Soul Arena v19 - Stable Tap Router
    Purpose: keep v15-style reliable buttons, but only activate on a real tap.
    This fixes accidental button presses and tap SFX during scrolling. */
 (function () {
   "use strict";
 
-  if (window.__EMXV18_STABLE_TAPS__) return;
-  window.__EMXV18_STABLE_TAPS__ = true;
+  if (window.__EMXV19_STABLE_TAPS__) return;
+  window.__EMXV19_STABLE_TAPS__ = true;
 
   const d = document;
   const $ = (id) => d.getElementById(id);
@@ -73,7 +73,13 @@
     "[data-v16-start]",
     "[data-v16-action]",
     "[data-v17-start]",
-    "[data-v17-action]"
+    "[data-v17-action]",
+    "[data-v19-action]",
+    "[data-v19-anim]",
+    "[data-v19-game]",
+    "[data-v19-catch]",
+    "[data-v19-memory]",
+    "[data-v19-dodge]"
   ].join(",");
 
   function now() {
@@ -322,6 +328,7 @@
   function usePower(powerKey) {
     if (!powerKey || !debounce("power:" + powerKey, 240)) return true;
     clearBlockers(true);
+    try { window.EMXV19?.attackCinematic?.(powerKey, powerKey); } catch (error) {}
     call("usePower", powerKey);
     return true;
   }
@@ -402,13 +409,16 @@
         <div class="v15-safe-modal">
           <div class="v15-safe-top">
             <div>
-              <p class="eyebrow">v18 No Sound Button</p>
+              <p class="eyebrow">v19 Stable Menu</p>
               <h2>Stable Menu</h2>
-              <p>Use this if any menu acts frozen. This version ignores scroll gestures and only activates real taps.</p>
+              <p>Use this if any menu acts frozen. Home returns to the main page, and taps stay scroll-safe.</p>
             </div>
             <button data-v17-action="closeStable">✕</button>
           </div>
           <div class="v15-safe-grid">
+            <button data-v19-action="home">🏠 Home</button>
+            <button data-v19-action="howto">📘 How to Play</button>
+            <button data-v19-action="funhub">🎮 Mini Games</button>
             <button data-v17-start="flame">🔥 Start Flame</button>
             <button data-v17-start="rogue">🥷 Start Rogue</button>
             <button data-v17-start="storm">⚔️ Start Storm</button>
@@ -461,6 +471,21 @@
     if (el.closest?.("#closeShopBtn")) return closeShop();
     if (el.closest?.("#resetBtn")) { call("deleteSave"); toast("Save deleted"); soundTap(); return true; }
     if (el.closest?.("#restartBtn")) { call("restartToMenu"); showScreen("startScreen"); soundTap(); return true; }
+
+    const v19Action = el.closest?.("[data-v19-action]");
+    if (v19Action) {
+      const action = v19Action.dataset.v19Action;
+      if (action === "home") { window.EMXV19?.goHome?.(); return true; }
+      if (action === "close") { window.EMXV19?.closeOverlay?.(); return true; }
+      if (action === "howto") { window.EMXV19?.openHowTo?.(); return true; }
+      if (action === "funhub") { window.EMXV19?.openFunHub?.(); return true; }
+      if (action === "animationLab") { window.EMXV19?.openAnimationLab?.(); return true; }
+      if (action === "bossCoach") { window.EMXV19?.openBossCoach?.(); return true; }
+      if (action === "daily") { window.EMXV19?.claimDaily?.(); return true; }
+    }
+
+    const v19Anim = el.closest?.("[data-v19-anim]");
+    if (v19Anim) { window.EMXV19?.attackCinematic?.(v19Anim.dataset.v19Anim, v19Anim.textContent || "Preview"); return true; }
 
     const v17Action = el.closest?.("[data-v17-action],[data-v16-action],[data-v15-action]");
     if (v17Action) {
@@ -575,15 +600,15 @@
     card.className = "v15-restore-card";
     card.innerHTML = `
       <div>
-        <p class="eyebrow">v18 No Sound Button</p>
-        <h2>Sound button removed</h2>
-        <p>The bottom sound unlock button is removed. Sounds work automatically after real taps, and scrolling should stay quiet.</p>
+        <p class="eyebrow">Live Build</p>
+        <h2>Home button + stable taps</h2>
+        <p>Use Home from anywhere, open Stable Menu if needed, and play the new Fun Center games.</p>
       </div>
       <div class="v15-restore-grid">
+        <button data-v19-action="home">Home</button>
         <button data-v17-action="stable">Stable Menu</button>
-        <button data-v17-action="clear">Clear Tap Blockers</button>
-        <button data-v17-start="flame">Start Flame</button>
-        <button data-v17-start="storm">Start Storm</button>
+        <button data-v19-action="funhub">Mini Games</button>
+        <button data-v19-action="howto">How to Play</button>
       </div>`;
     const grid = start.querySelector(".class-grid");
     if (grid) start.insertBefore(card, grid);
@@ -598,10 +623,10 @@
   }
 
   function markVersion() {
-    qsa(".version-chip").forEach((chip) => { chip.textContent = "v18 No Sound Button"; });
+    qsa(".version-chip").forEach((chip) => { chip.textContent = "Live Build"; });
     const subtitle = d.querySelector(".brand-title-card .subtitle");
     if (subtitle && /v1[0-9]/i.test(subtitle.textContent || "")) {
-      subtitle.textContent = "v18 No Sound Button: loading screen, working buttons, and no accidental click sounds while scrolling.";
+      subtitle.textContent = "Live Build: Home button, clear instructions, better fight animations, boss coaching, and mini-games.";
     }
   }
 
@@ -621,7 +646,7 @@
       markVersion();
       clearBlockers(false);
     }, 1200);
-    setTimeout(() => toast("v18 no-sound-button fix loaded"), 1600);
+    setTimeout(() => toast("v19 home + fun fix loaded"), 1600);
   }
 
   // Pointer/touch events are used only to detect a completed tap. No action happens on pointerdown.
