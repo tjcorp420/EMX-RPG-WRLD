@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>EMX Soul Arena Online Multiplayer</title>
+  <meta name="theme-color" content="#070711" />
+  <meta name="description" content="EMX Soul Arena online duel and co-op boss rooms." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="EMX Online" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="multiplayer.css" />
+  <script type="module" src="multiplayer.js"></script>
+</head>
+<body>
+  <main class="mp-app">
+    <header class="mp-hero-card">
+      <a href="index.html" class="mp-back">← Solo</a>
+      <img src="assets/emx-header.png" alt="EMX Soul Arena" class="mp-logo" />
+      <div class="mp-title-row">
+        <div>
+          <p class="eyebrow">Online Multiplayer</p>
+          <h1>Duel or Raid</h1>
+        </div>
+        <span id="connectionBadge" class="mp-badge offline">Offline</span>
+      </div>
+      <p class="mp-muted">Create a room, send the code or link, and battle through the same Home Screen app.</p>
+    </header>
+
+    <section id="setupWarning" class="mp-card mp-warning hidden">
+      <h2>Firebase setup needed</h2>
+      <p>Open <strong>firebase-config.js</strong>, paste your Firebase Web App config, enable Anonymous Auth, and create a Realtime Database. Multiplayer will turn on after that.</p>
+    </section>
+
+    <section id="setupPanel" class="mp-card">
+      <div class="mp-field-grid">
+        <label class="mp-field">
+          <span>Your Name</span>
+          <input id="playerNameInput" maxlength="18" placeholder="Player" autocomplete="nickname" />
+        </label>
+        <label class="mp-field">
+          <span>Room Code</span>
+          <input id="roomCodeInput" maxlength="6" placeholder="ABC123" autocapitalize="characters" />
+        </label>
+      </div>
+
+      <div class="mp-section-title">
+        <p class="eyebrow">Choose Class</p>
+        <h2>Your Fighter</h2>
+      </div>
+      <div id="mpClassGrid" class="mp-class-grid"></div>
+
+      <div class="mp-mode-grid">
+        <button id="createDuelBtn" class="mp-primary">Create Duel Room</button>
+        <button id="createCoopBtn" class="mp-primary alt">Create Co-op Boss Room</button>
+        <button id="joinRoomBtn" class="mp-secondary">Join Room Code</button>
+      </div>
+
+      <p id="setupStatus" class="mp-status">Sign in, pick a class, then create or join a room.</p>
+    </section>
+
+    <section id="lobbyPanel" class="mp-card hidden">
+      <div class="mp-room-top">
+        <div>
+          <p class="eyebrow">Room</p>
+          <h2 id="roomCodeText">------</h2>
+        </div>
+        <span id="roomModeText" class="mp-badge">Duel</span>
+      </div>
+
+      <div class="mp-invite-row">
+        <input id="inviteLinkInput" readonly />
+        <button id="copyInviteBtn" class="mp-secondary small">Copy Link</button>
+      </div>
+
+      <div id="lobbyPlayers" class="mp-player-list"></div>
+
+      <div class="mp-mode-grid">
+        <button id="readyBtn" class="mp-primary">Ready</button>
+        <button id="leaveRoomBtn" class="mp-secondary">Leave</button>
+      </div>
+
+      <p id="lobbyStatus" class="mp-status">Waiting for another player...</p>
+    </section>
+
+    <section id="battlePanel" class="mp-battle hidden">
+      <div class="mp-battle-top">
+        <button id="battleLeaveBtn" class="mp-secondary small">Leave</button>
+        <div>
+          <p class="eyebrow">Room</p>
+          <h2 id="battleRoomCode">------</h2>
+        </div>
+        <span id="battleTurnBadge" class="mp-badge">Turn</span>
+      </div>
+
+      <section id="opponentCard" class="mp-fighter-card enemy">
+        <div class="mp-fighter-row">
+          <div>
+            <h2 id="opponentName">Opponent</h2>
+            <p id="opponentMeta" class="mp-muted">Waiting...</p>
+          </div>
+          <div id="opponentSprite" class="mp-sprite">👤</div>
+        </div>
+        <div class="bar hp-bar"><div id="opponentHpFill" class="fill hp-fill"></div></div>
+        <p id="opponentHpText" class="mp-hp-text">HP 0/0</p>
+        <div id="opponentStatuses" class="status-row mp-status-row"></div>
+      </section>
+
+      <section id="mpArena" class="mp-arena">
+        <div id="mpEffectLayer" class="mp-effect-layer"></div>
+        <p id="mpTurnText" class="turn-text">Waiting...</p>
+      </section>
+
+      <section id="playerCard" class="mp-fighter-card player">
+        <div class="mp-fighter-row">
+          <div>
+            <h2 id="myName">You</h2>
+            <p id="myMeta" class="mp-muted">Class</p>
+          </div>
+          <div id="mySprite" class="mp-sprite">👤</div>
+        </div>
+        <div class="bar hp-bar"><div id="myHpFill" class="fill hp-fill"></div></div>
+        <p id="myHpText" class="mp-hp-text">HP 0/0</p>
+        <div class="bar mana-bar"><div id="myManaFill" class="fill mana-fill"></div></div>
+        <p id="myManaText" class="mp-hp-text">Mana 0/0</p>
+        <div class="bar ult-bar"><div id="myUltFill" class="fill ult-fill"></div></div>
+        <p id="myUltText" class="mp-hp-text">Ultimate 0/100</p>
+        <div id="myStatuses" class="status-row mp-status-row"></div>
+      </section>
+
+      <section id="mpActions" class="mp-actions"></section>
+
+      <section class="log-card mp-log-card">
+        <h3>Online Log</h3>
+        <div id="mpLog" class="battle-log"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
