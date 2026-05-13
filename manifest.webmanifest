@@ -1,7 +1,7 @@
 {
   "name": "EMX Soul Arena",
   "short_name": "Soul Arena",
-  "description": "A neon mobile RPG battle arena by EMX Tweaks.",
+  "description": "A neon mobile RPG with campaign zones, gear, skill trees, cinematic combat, and multiplayer by EMX Tweaks.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

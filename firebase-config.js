@@ -14,7 +14,7 @@ export const firebaseConfig = {
 
 export const hasFirebaseConfig = Object.values(firebaseConfig).every(
   (value) =>
-  typeof value === "string" &&
-  value.length > 0 &&
-  !value.includes("PASTE_")
+    typeof value === "string" &&
+    value.length > 0 &&
+    !value.includes("PASTE_")
 );

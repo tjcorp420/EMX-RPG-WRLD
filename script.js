@@ -4209,3 +4209,1172 @@ render = function v5Render() {
 };
 
 v5PatchLabels();
+
+/* === EMX Soul Arena v7: Campaign Map + Gear Inventory + Skill Tree Update === */
+(function emxSoulArenaV7() {
+  const V7_UPDATE_NAME = "Campaign + Gear";
+  const V7_META_KEY = "emxSoulArenaCampaign_v7";
+  const V7_SOUND_KEY = "emxSoulArenaSound_v7";
+  const V7_RARITY_ORDER = { Common: 1, Rare: 2, Epic: 3, Legendary: 4, Mythic: 5 };
+
+  const V7_CAMPAIGN_ZONES = [
+    {
+      id: "slimeFields",
+      icon: "🟢",
+      title: "Slime Fields",
+      subtitle: "Training zone for early builds.",
+      tier: 1,
+      length: 5,
+      unlockText: "Unlocked",
+      enemies: [
+        { id: "slime", name: "Training Slime", icon: "🟢", hp: 40, attack: 7, defense: 1 },
+        { id: "bat", name: "Glow Bat", icon: "🦇", hp: 42, attack: 8, defense: 1, lifesteal: 0.16 },
+        { id: "spider", name: "Spore Spider", icon: "🕷️", hp: 48, attack: 8, defense: 1, status: { type: "poison", chance: 0.22, turns: 2, damage: 3 } }
+      ],
+      miniBoss: { id: "slimeKnight", name: "Slime Knight", icon: "🛡️", hp: 72, attack: 10, defense: 3, shield: 12 },
+      boss: { id: "ancientSlime", name: "Ancient Slime", icon: "🧪", hp: 118, attack: 12, defense: 3, shield: 15, status: { type: "poison", chance: 0.26, turns: 2, damage: 4 } },
+      rewardGear: "glowleafCharm",
+      rewardSkillPoints: 2
+    },
+    {
+      id: "goblinMarket",
+      icon: "👺",
+      title: "Goblin Market",
+      subtitle: "Fast enemies, stolen relics, and shop tech.",
+      tier: 2,
+      length: 6,
+      unlockText: "Clear Slime Fields",
+      enemies: [
+        { id: "goblin", name: "Market Goblin", icon: "👺", hp: 54, attack: 10, defense: 2 },
+        { id: "goblinThief", name: "Goblin Thief", icon: "🧤", hp: 50, attack: 12, defense: 1, lifesteal: 0.18 },
+        { id: "cultist", name: "Rune Seller", icon: "🧙", hp: 58, attack: 11, defense: 2, status: { type: "weakness", chance: 0.24, turns: 2 } }
+      ],
+      miniBoss: { id: "goldBrute", name: "Gold Brute", icon: "💰", hp: 105, attack: 14, defense: 4, shield: 18 },
+      boss: { id: "goblinKing", name: "Goblin King", icon: "🤴", hp: 152, attack: 16, defense: 5, shield: 22 },
+      rewardGear: "marketBlade",
+      rewardSkillPoints: 3
+    },
+    {
+      id: "boneCrypt",
+      icon: "💀",
+      title: "Bone Crypt",
+      subtitle: "Undead fights with bleed, poison, and curses.",
+      tier: 3,
+      length: 7,
+      unlockText: "Clear Goblin Market",
+      enemies: [
+        { id: "skeleton", name: "Crypt Skeleton", icon: "💀", hp: 66, attack: 13, defense: 3 },
+        { id: "boneMage", name: "Bone Mage", icon: "🦴", hp: 60, attack: 14, defense: 2, status: { type: "bleed", chance: 0.25, turns: 3, damage: 4 } },
+        { id: "graveWolf", name: "Grave Wolf", icon: "🐺", hp: 68, attack: 15, defense: 2, status: { type: "bleed", chance: 0.3, turns: 3, damage: 4 } }
+      ],
+      miniBoss: { id: "cryptCaptain", name: "Crypt Captain", icon: "☠️", hp: 128, attack: 17, defense: 5, shield: 20 },
+      boss: { id: "boneDragon", name: "Bone Dragon", icon: "🐉", hp: 205, attack: 19, defense: 6, shield: 28, status: { type: "poison", chance: 0.34, turns: 3, damage: 5 } },
+      rewardGear: "boneguardArmor",
+      rewardSkillPoints: 3
+    },
+    {
+      id: "stormTower",
+      icon: "⛈️",
+      title: "Storm Tower",
+      subtitle: "Shield phases, stuns, and lightning bosses.",
+      tier: 4,
+      length: 8,
+      unlockText: "Clear Bone Crypt",
+      enemies: [
+        { id: "golem", name: "Tower Golem", icon: "🗿", hp: 84, attack: 15, defense: 6, shield: 18 },
+        { id: "imp", name: "Static Imp", icon: "👿", hp: 72, attack: 16, defense: 3, status: { type: "stun", chance: 0.16, turns: 1 } },
+        { id: "stormHound", name: "Storm Hound", icon: "🐺", hp: 78, attack: 17, defense: 3, status: { type: "freeze", chance: 0.18, turns: 1 } }
+      ],
+      miniBoss: { id: "towerSentinel", name: "Tower Sentinel", icon: "🛡️", hp: 160, attack: 19, defense: 7, shield: 35 },
+      boss: { id: "stormTitan", name: "Storm Titan", icon: "⛈️", hp: 250, attack: 22, defense: 8, shield: 42, status: { type: "stun", chance: 0.2, turns: 1 } },
+      rewardGear: "stormCore",
+      rewardSkillPoints: 4
+    },
+    {
+      id: "voidRift",
+      icon: "👁️",
+      title: "Void Rift",
+      subtitle: "Late-game zone with mirror damage and mythic loot.",
+      tier: 5,
+      length: 9,
+      unlockText: "Clear Storm Tower",
+      enemies: [
+        { id: "voidling", name: "Voidling", icon: "👁️", hp: 86, attack: 18, defense: 4, status: { type: "weakness", chance: 0.24, turns: 2 } },
+        { id: "mirrorShade", name: "Mirror Shade", icon: "🪞", hp: 94, attack: 17, defense: 5, reflectPct: 0.06 },
+        { id: "riftDemon", name: "Rift Demon", icon: "👹", hp: 102, attack: 20, defense: 5, status: { type: "burn", chance: 0.28, turns: 2, damage: 5 } }
+      ],
+      miniBoss: { id: "riftReaper", name: "Rift Reaper", icon: "🌑", hp: 190, attack: 23, defense: 7, shield: 36, reflectPct: 0.06 },
+      boss: { id: "voidBeast", name: "Void Emperor", icon: "👁️", hp: 315, attack: 25, defense: 9, shield: 50, status: { type: "weakness", chance: 0.35, turns: 2 } },
+      rewardGear: "voidCrown",
+      rewardSkillPoints: 5
+    }
+  ];
+
+  const V7_GEAR = [
+    { id: "trainingBlade", slot: "weapon", rarity: "Common", icon: "⚔️", title: "Training Blade", desc: "+5 basic damage.", effect: (s) => { s.mods.basicDamage += 5; } },
+    { id: "patchedVest", slot: "armor", rarity: "Common", icon: "🥋", title: "Patched Vest", desc: "+18 max HP and +8 starting shield.", effect: (s) => { s.player.maxHp += 18; s.player.hp += 18; s.mods.startShield += 8; } },
+    { id: "apprenticeCharm", slot: "charm", rarity: "Common", icon: "🔰", title: "Apprentice Charm", desc: "+4 mana regeneration per turn.", effect: (s) => { s.mods.manaRegen += 4; } },
+    { id: "glowleafCharm", slot: "charm", rarity: "Rare", icon: "🌿", title: "Glowleaf Charm", desc: "+16 healing and poison/root powers hit harder.", effect: (s) => { s.mods.healBonus += 16; s.mods.natureDamage += 9; } },
+    { id: "marketBlade", slot: "weapon", rarity: "Rare", icon: "🗡️", title: "Market Blade", desc: "+11 basic damage and +9% crit.", effect: (s) => { s.mods.basicDamage += 11; s.mods.critBonus += 0.09; } },
+    { id: "emberCalibrator", slot: "weapon", rarity: "Rare", icon: "🔥", title: "Ember Calibrator", desc: "+15 fire damage and burn lasts longer.", effect: (s) => { s.mods.fireDamage += 15; s.mods.statusDuration += 1; } },
+    { id: "venomNeedle", slot: "weapon", rarity: "Epic", icon: "☠️", title: "Venom Needle", desc: "Poison ramps faster and crits more.", effect: (s) => { s.mods.poisonRamp += 3; s.mods.critBonus += 0.08; } },
+    { id: "boneguardArmor", slot: "armor", rarity: "Epic", icon: "🦴", title: "Boneguard Armor", desc: "+34 HP, +16 start shield, and less boss damage taken.", effect: (s) => { s.player.maxHp += 34; s.player.hp += 34; s.mods.startShield += 16; s.mods.v7BossResist += 0.08; } },
+    { id: "stormCore", slot: "core", rarity: "Epic", icon: "⚡", title: "Storm Core", desc: "+14 lightning damage and +8 ultimate charge gain.", effect: (s) => { s.mods.lightningDamage += 14; s.mods.ultGain += 8; } },
+    { id: "neonAegis", slot: "armor", rarity: "Legendary", icon: "🛡️", title: "Neon Aegis", desc: "+42 starting shield and 12% damage reduction.", effect: (s) => { s.mods.startShield += 42; s.mods.damageReduction += 0.12; } },
+    { id: "bossbreakerCore", slot: "core", rarity: "Legendary", icon: "🎯", title: "Bossbreaker Core", desc: "+25% boss damage, +12% boss resistance.", effect: (s) => { s.mods.bossDamage += 0.25; s.mods.v7BossResist += 0.12; } },
+    { id: "phoenixDrive", slot: "core", rarity: "Legendary", icon: "🌅", title: "Phoenix Drive", desc: "Start each run with one revive and stronger heals.", effect: (s) => { s.mods.revive += 1; s.mods.healBonus += 18; } },
+    { id: "voidCrown", slot: "charm", rarity: "Mythic", icon: "👑", title: "Void Crown", desc: "Ignore defense more often, +30% campaign damage.", effect: (s) => { s.mods.ignoreDefenseChance += 0.24; s.mods.v7CampaignDamage += 0.3; } },
+    { id: "emxOverdriveChip", slot: "core", rarity: "Mythic", icon: "⚙️", title: "EMX Overdrive Chip", desc: "Overdrive charges faster and ultimates hit harder.", effect: (s) => { s.mods.ultGain += 12; s.mods.overdriveDamage += 0.4; s.mods.v5UltimateDamage = (s.mods.v5UltimateDamage || 0) + 0.2; } }
+  ];
+
+  const V7_SKILL_NODES = [
+    { id: "corePower", icon: "⚔️", title: "Core Power", max: 5, cost: 1, desc: "+4 basic and special damage per rank.", effect: (s, r) => { s.mods.basicDamage += r * 4; s.mods.specialDamage += r * 4; } },
+    { id: "fieldMedic", icon: "❤️", title: "Field Medic", max: 4, cost: 1, desc: "+12 HP and +5 healing per rank.", effect: (s, r) => { s.player.maxHp += r * 12; s.player.hp += r * 12; s.mods.healBonus += r * 5; } },
+    { id: "bossTactics", icon: "🎯", title: "Boss Tactics", max: 4, cost: 2, desc: "+8% boss damage and +5% boss resistance per rank.", effect: (s, r) => { s.mods.bossDamage += r * 0.08; s.mods.v7BossResist += r * 0.05; } },
+    { id: "lootMagnet", icon: "🎁", title: "Loot Magnet", max: 4, cost: 2, desc: "Better gear/chest odds and +4% elite damage per rank.", effect: (s, r) => { s.mods.v7GearLuck += r; s.mods.eliteDamage += r * 0.04; } },
+    { id: "overdriveSync", icon: "⚡", title: "Overdrive Sync", max: 3, cost: 2, desc: "+5 ultimate gain and +1 combo protection per rank.", effect: (s, r) => { s.mods.ultGain += r * 5; s.mods.comboProtection += r; } },
+    { id: "shopProtocol", icon: "🛒", title: "Shop Protocol", max: 3, cost: 2, desc: "Shop discount +8% per rank.", effect: (s, r) => { s.mods.shopDiscount += r * 0.08; } },
+    { id: "campaignScout", icon: "🗺️", title: "Campaign Scout", max: 5, cost: 1, desc: "+6% campaign damage and +6 boss-prep shield per rank.", effect: (s, r) => { s.mods.v7CampaignDamage += r * 0.06; s.mods.v7BossPrepShield += r * 6; } },
+    { id: "chestHunter", icon: "💎", title: "Chest Hunter", max: 3, cost: 3, desc: "Daily and zone chests have better rare loot.", effect: (s, r) => { s.mods.v7ChestLuck += r; } }
+  ];
+
+  const V7_CAMPAIGN_UPGRADES = [
+    {
+      id: "v7BossPrepProtocol",
+      rarity: "Rare",
+      kind: "Campaign Upgrade",
+      title: "Boss Prep Protocol",
+      desc: "Gain +28 shield now and bosses deal 8% less damage this run.",
+      condition: () => Boolean(state?.campaign),
+      apply() { state.player.shield += 28; state.mods.v7BossResist += 0.08; addFloatingText("+28 Shield", "good", "player"); }
+    },
+    {
+      id: "v7ZoneBreaker",
+      rarity: "Epic",
+      kind: "Campaign Upgrade",
+      title: "Zone Breaker",
+      desc: "Deal +22% damage in campaign zones and +12% to elites.",
+      condition: () => Boolean(state?.campaign),
+      apply() { state.mods.v7CampaignDamage += 0.22; state.mods.eliteDamage += 0.12; }
+    },
+    {
+      id: "v7FieldRestock",
+      rarity: "Rare",
+      kind: "Campaign Upgrade",
+      title: "Field Restock",
+      desc: "Heal 35 HP, restore 35 mana, and gain 25 ultimate charge.",
+      condition: () => Boolean(state?.campaign),
+      apply() { healTarget(state.player, 35, true); state.player.mana = clamp(state.player.mana + 35, 0, state.player.maxMana); state.player.ult = clamp(state.player.ult + 25, 0, state.player.maxUlt); }
+    },
+    {
+      id: "v7LootScanner",
+      rarity: "Epic",
+      kind: "Campaign Upgrade",
+      title: "Loot Scanner",
+      desc: "Next boss or zone clear grants an extra gear chest.",
+      condition: () => Boolean(state?.campaign) && !state.v7ExtraChestReady,
+      apply() { state.v7ExtraChestReady = true; }
+    },
+    {
+      id: "v7MythicSpark",
+      rarity: "Legendary",
+      kind: "Campaign Upgrade",
+      title: "Mythic Spark",
+      desc: "+15% crit, +20% ultimate damage, and +1 skill point after this run.",
+      condition: () => Boolean(state?.campaign),
+      apply() { state.mods.critBonus += 0.15; state.mods.v5UltimateDamage = (state.mods.v5UltimateDamage || 0) + 0.2; state.v7PendingSkillPoint = (state.v7PendingSkillPoint || 0) + 1; }
+    }
+  ];
+
+  const V7_SHOP_ITEMS = [
+    {
+      id: "v7GearCrate",
+      price: 85,
+      rarity: "Rare",
+      title: "Gear Crate",
+      desc: "Adds a random permanent gear chest to inventory.",
+      buy() { v7AddChest("Gear Crate"); v7Toast("Gear Crate added to your Campaign menu."); }
+    },
+    {
+      id: "v7BossScanner",
+      price: 55,
+      rarity: "Rare",
+      title: "Boss Scanner",
+      desc: "Current enemy loses 10% attack and 2 defense.",
+      buy() { if (state?.enemy) { state.enemy.attack = Math.max(1, Math.round(state.enemy.attack * 0.9)); state.enemy.defense = Math.max(0, state.enemy.defense - 2); addLog("Boss Scanner weakened the enemy."); } }
+    },
+    {
+      id: "v7SkillChip",
+      price: 135,
+      rarity: "Epic",
+      title: "Skill Chip",
+      desc: "Gain +1 permanent skill point.",
+      buy() { v7Meta.skillPoints += 1; v7SaveMeta(); v7Toast("+1 permanent skill point."); }
+    }
+  ];
+
+  function v7TodayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function v7DefaultMeta() {
+    return {
+      activeZone: "slimeFields",
+      unlockedZones: { slimeFields: true },
+      completedZones: {},
+      zoneBest: {},
+      inventory: ["trainingBlade", "patchedVest", "apprenticeCharm"],
+      equipped: { weapon: "trainingBlade", armor: "patchedVest", charm: "apprenticeCharm", core: null },
+      skillPoints: 0,
+      skills: {},
+      chests: [],
+      lastDaily: "",
+      totalChestsOpened: 0,
+      totalZonesCleared: 0,
+      bestZoneTier: 1
+    };
+  }
+
+  function v7LoadMeta() {
+    try {
+      const raw = localStorage.getItem(V7_META_KEY);
+      return v7EnsureMeta(raw ? JSON.parse(raw) : v7DefaultMeta());
+    } catch (error) {
+      return v7EnsureMeta(v7DefaultMeta());
+    }
+  }
+
+  function v7EnsureMeta(meta) {
+    const base = v7DefaultMeta();
+    const merged = { ...base, ...(meta || {}) };
+    merged.unlockedZones = { ...base.unlockedZones, ...(meta?.unlockedZones || {}) };
+    merged.completedZones = { ...(meta?.completedZones || {}) };
+    merged.zoneBest = { ...(meta?.zoneBest || {}) };
+    merged.equipped = { ...base.equipped, ...(meta?.equipped || {}) };
+    merged.skills = { ...(meta?.skills || {}) };
+    merged.chests = Array.isArray(meta?.chests) ? meta.chests : [];
+    merged.inventory = Array.from(new Set([...(meta?.inventory || []), ...base.inventory])).filter((id) => Boolean(v7GearById(id)));
+    for (const node of V7_SKILL_NODES) merged.skills[node.id] = clamp(Number(merged.skills[node.id] || 0), 0, node.max);
+    if (!merged.activeZone || (merged.activeZone !== "endless" && !v7ZoneById(merged.activeZone))) merged.activeZone = "slimeFields";
+    if (merged.activeZone !== "endless" && !v7IsZoneUnlocked(merged.activeZone, merged)) merged.activeZone = v7FirstUnlockedZone(merged).id;
+    return merged;
+  }
+
+  let v7Meta = v7LoadMeta();
+  let v7ActiveTab = "map";
+  let v7AudioCtx = null;
+
+  function v7SaveMeta() {
+    v7Meta = v7EnsureMeta(v7Meta);
+    localStorage.setItem(V7_META_KEY, JSON.stringify(v7Meta));
+    v7RenderPanel();
+    v7RenderIfOpen();
+  }
+
+  function v7ZoneById(id) {
+    return V7_CAMPAIGN_ZONES.find((zone) => zone.id === id);
+  }
+
+  function v7GearById(id) {
+    return V7_GEAR.find((item) => item.id === id);
+  }
+
+  function v7SkillById(id) {
+    return V7_SKILL_NODES.find((item) => item.id === id);
+  }
+
+  function v7ZoneIndex(id) {
+    return V7_CAMPAIGN_ZONES.findIndex((zone) => zone.id === id);
+  }
+
+  function v7IsZoneUnlocked(id, meta = v7Meta) {
+    if (id === "endless") return true;
+    if (id === "slimeFields") return true;
+    if (meta.unlockedZones?.[id]) return true;
+    const index = v7ZoneIndex(id);
+    if (index <= 0) return true;
+    const previous = V7_CAMPAIGN_ZONES[index - 1];
+    return Boolean(meta.completedZones?.[previous.id]);
+  }
+
+  function v7FirstUnlockedZone(meta = v7Meta) {
+    return [...V7_CAMPAIGN_ZONES].reverse().find((zone) => v7IsZoneUnlocked(zone.id, meta)) || V7_CAMPAIGN_ZONES[0];
+  }
+
+  function v7UnlockNextZone(zoneId) {
+    const index = v7ZoneIndex(zoneId);
+    const next = V7_CAMPAIGN_ZONES[index + 1];
+    if (next) v7Meta.unlockedZones[next.id] = true;
+    return next;
+  }
+
+  function v7GetActiveZone() {
+    if (v7Meta.activeZone === "endless") return null;
+    if (!v7IsZoneUnlocked(v7Meta.activeZone)) v7Meta.activeZone = v7FirstUnlockedZone().id;
+    return v7ZoneById(v7Meta.activeZone) || V7_CAMPAIGN_ZONES[0];
+  }
+
+  function v7RarityClass(rarity) {
+    return String(rarity || "Common").toLowerCase();
+  }
+
+  function v7GearSlotsText() {
+    const equipped = v7Meta.equipped || {};
+    return ["weapon", "armor", "charm", "core"].map((slot) => {
+      const gear = v7GearById(equipped[slot]);
+      return `<span class="v7-slot-tag">${slot.toUpperCase()}: ${gear ? `${gear.icon} ${gear.title}` : "Empty"}</span>`;
+    }).join("");
+  }
+
+  function v7ApplyGearAndSkillsToState(targetState) {
+    if (!targetState) return targetState;
+    targetState.mods = { ...defaultMods(), ...(targetState.mods || {}) };
+    targetState.v7GearApplied = [];
+    for (const id of Object.values(v7Meta.equipped || {})) {
+      const gear = v7GearById(id);
+      if (!gear) continue;
+      gear.effect(targetState);
+      targetState.v7GearApplied.push(gear.title);
+    }
+    for (const node of V7_SKILL_NODES) {
+      const rank = v7Meta.skills[node.id] || 0;
+      if (rank > 0) node.effect(targetState, rank);
+    }
+    targetState.player.hp = clamp(targetState.player.hp, 0, targetState.player.maxHp);
+    targetState.player.mana = clamp(targetState.player.mana, 0, targetState.player.maxMana);
+    return targetState;
+  }
+
+  function v7CreateCampaignRun(targetState) {
+    const zone = v7GetActiveZone();
+    if (!zone) {
+      targetState.campaign = null;
+      targetState.v7Mode = "endless";
+      return;
+    }
+    targetState.campaign = {
+      mode: "campaign",
+      zoneId: zone.id,
+      zoneTitle: zone.title,
+      zoneBattle: 1,
+      zoneLength: zone.length,
+      zoneTier: zone.tier,
+      zoneCleared: false,
+      rewarded: false
+    };
+    targetState.v7Mode = "campaign";
+  }
+
+  function v7CloneStatus(status) {
+    return status ? { ...status } : undefined;
+  }
+
+  function v7CreateCampaignEnemy(zone, step) {
+    const finalBoss = step >= zone.length;
+    const miniBoss = !finalBoss && step === Math.max(3, Math.ceil(zone.length / 2));
+    const base = finalBoss ? zone.boss : miniBoss ? zone.miniBoss : choice(zone.enemies);
+    const tierFactor = 1 + (zone.tier - 1) * 0.12;
+    const stepFactor = 1 + (step - 1) * 0.065;
+    const bossFactor = finalBoss ? 1.08 : miniBoss ? 1.04 : 1;
+    const hp = Math.round(base.hp * tierFactor * stepFactor * bossFactor + zone.tier * (finalBoss ? 18 : miniBoss ? 10 : 4));
+    const attack = Math.round(base.attack * (1 + (zone.tier - 1) * 0.075 + (step - 1) * 0.045));
+    const defense = Math.round((base.defense || 0) + (zone.tier - 1) * 0.9 + (step - 1) * 0.23);
+    const enemy = {
+      ...base,
+      status: v7CloneStatus(base.status),
+      hp,
+      maxHp: hp,
+      attack,
+      defense,
+      statuses: [],
+      shield: Math.round((base.shield || 0) + (finalBoss ? 12 + zone.tier * 3 : miniBoss ? 8 + zone.tier * 2 : 0)),
+      isBoss: finalBoss,
+      isMiniBoss: miniBoss,
+      turn: 0,
+      charging: false,
+      elite: false,
+      eliteLabels: [],
+      v5Balanced: true,
+      v7CampaignEnemy: true,
+      v7ZoneId: zone.id,
+      v7ZoneFinal: finalBoss,
+      v7ZoneStep: step
+    };
+
+    if (miniBoss) {
+      enemy.name = `Mini-Boss ${enemy.name}`;
+      enemy.elite = true;
+      enemy.eliteLabels.push("Mini-Boss");
+    }
+
+    const eliteChance = Math.min(0.08 + zone.tier * 0.03 + step * 0.012, 0.28);
+    if (!finalBoss && !miniBoss && Math.random() < eliteChance && typeof applyEliteModifiers === "function") {
+      applyEliteModifiers(enemy, zone.tier >= 4 && Math.random() < 0.18 ? 2 : 1);
+      enemy.v7CampaignEnemy = true;
+      enemy.v7ZoneId = zone.id;
+      enemy.v7ZoneStep = step;
+    }
+
+    return enemy;
+  }
+
+  function v7RollGear(maxRarity = "Epic", zoneTier = 1) {
+    const max = V7_RARITY_ORDER[maxRarity] || 3;
+    const owned = new Set(v7Meta.inventory || []);
+    let pool = V7_GEAR.filter((gear) => (V7_RARITY_ORDER[gear.rarity] || 1) <= max);
+    if (Math.random() < 0.7) pool = pool.filter((gear) => !owned.has(gear.id)).concat(pool.filter((gear) => owned.has(gear.id)));
+    const luck = (state?.mods?.v7GearLuck || 0) + Math.max(0, zoneTier - 1);
+    const rareBoost = Math.min(4, luck);
+    const weights = { Common: 72 - rareBoost * 6, Rare: 42 + rareBoost * 5, Epic: 22 + rareBoost * 3, Legendary: 10 + rareBoost * 2, Mythic: 4 + rareBoost };
+    const total = pool.reduce((sum, item) => sum + Math.max(1, weights[item.rarity] || 20), 0);
+    let roll = Math.random() * total;
+    for (const item of pool) {
+      roll -= Math.max(1, weights[item.rarity] || 20);
+      if (roll <= 0) return item;
+    }
+    return choice(pool);
+  }
+
+  function v7GrantGear(id, source = "Gear unlocked") {
+    const gear = typeof id === "string" ? v7GearById(id) : id;
+    if (!gear) return null;
+    if (!v7Meta.inventory.includes(gear.id)) {
+      v7Meta.inventory.push(gear.id);
+      v7Toast(`${source}: ${gear.icon} ${gear.title}`);
+    } else {
+      const crystalAmount = 10 + (V7_RARITY_ORDER[gear.rarity] || 1) * 8;
+      if (typeof hqAwardCrystals === "function") hqAwardCrystals(crystalAmount, "Duplicate gear converted");
+      v7Toast(`Duplicate ${gear.title} converted to 💎 ${crystalAmount}.`);
+    }
+    v7SaveMeta();
+    return gear;
+  }
+
+  function v7AddChest(type = "Campaign Chest") {
+    v7Meta.chests.push({ type, addedAt: Date.now() });
+    v7SaveMeta();
+  }
+
+  function v7OpenChest(index) {
+    const chest = v7Meta.chests[index];
+    if (!chest) return;
+    v7Meta.chests.splice(index, 1);
+    v7Meta.totalChestsOpened += 1;
+    const zoneTier = state?.campaign?.zoneTier || v7GetActiveZone()?.tier || v7Meta.bestZoneTier || 1;
+    let maxRarity = zoneTier >= 5 ? "Mythic" : zoneTier >= 4 ? "Legendary" : zoneTier >= 2 ? "Epic" : "Rare";
+    if (chest.type.includes("Legendary")) maxRarity = "Legendary";
+    if (chest.type.includes("Mythic")) maxRarity = "Mythic";
+    const gear = v7RollGear(maxRarity, zoneTier + (v7Meta.skills.chestHunter || 0));
+    v7GrantGear(gear, `${chest.type} opened`);
+    if (Math.random() < 0.24 + (v7Meta.skills.chestHunter || 0) * 0.05) {
+      v7Meta.skillPoints += 1;
+      v7Toast("Bonus: +1 skill point from chest.");
+    }
+    if (typeof hqAwardCrystals === "function") hqAwardCrystals(8 + zoneTier * 2, `${chest.type} bonus`);
+    v7SaveMeta();
+    v7Render();
+    v7PlaySound("chest");
+    v7Vibrate(90);
+  }
+
+  function v7CompleteZone(zoneId) {
+    const zone = v7ZoneById(zoneId);
+    if (!zone || state?.campaign?.rewarded) return;
+    state.campaign.rewarded = true;
+    state.campaign.zoneCleared = true;
+    v7Meta.completedZones[zone.id] = true;
+    v7Meta.unlockedZones[zone.id] = true;
+    v7Meta.zoneBest[zone.id] = zone.length;
+    v7Meta.totalZonesCleared += 1;
+    v7Meta.bestZoneTier = Math.max(v7Meta.bestZoneTier || 1, zone.tier);
+    v7Meta.skillPoints += zone.rewardSkillPoints + (state.v7PendingSkillPoint || 0);
+    v7GrantGear(zone.rewardGear, `${zone.title} clear reward`);
+    v7AddChest(`${zone.title} Chest`);
+    if (state.v7ExtraChestReady) v7AddChest("Bonus Gear Chest");
+    const next = v7UnlockNextZone(zone.id);
+    if (typeof hqAwardCrystals === "function") hqAwardCrystals(25 + zone.tier * 12, `${zone.title} campaign clear`);
+    addLog(`${zone.title} cleared! +${zone.rewardSkillPoints} skill points and permanent gear unlocked.`);
+    if (next) addLog(`New zone unlocked: ${next.title}.`);
+    v7SaveMeta();
+    v7PlaySound("victory");
+    v7Vibrate([80, 40, 120]);
+  }
+
+  function v7CampaignCompletePending() {
+    return Boolean(state?.campaign?.zoneCleared);
+  }
+
+  function v7EndCampaignRun() {
+    if (!state?.campaign) return;
+    state.phase = "complete";
+    saveGame();
+    v7ShowZoneComplete(state.campaign.zoneId);
+  }
+
+  function v7CurrentZoneStepText() {
+    if (!state?.campaign) return "Endless Arena";
+    return `${state.campaign.zoneTitle} • Battle ${state.campaign.zoneBattle}/${state.campaign.zoneLength}`;
+  }
+
+  function v7Toast(message) {
+    let toast = document.getElementById("v7Toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "v7Toast";
+      toast.className = "v7-toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(v7Toast._timer);
+    v7Toast._timer = setTimeout(() => toast.classList.remove("show"), 2300);
+  }
+
+  function v7SoundEnabled() {
+    return localStorage.getItem(V7_SOUND_KEY) !== "off";
+  }
+
+  function v7ToggleSound() {
+    const next = v7SoundEnabled() ? "off" : "on";
+    localStorage.setItem(V7_SOUND_KEY, next);
+    v7Toast(`Sound ${next === "on" ? "enabled" : "muted"}.`);
+    v7RenderPanel();
+    v7RenderIfOpen();
+    if (next === "on") v7PlaySound("tap");
+  }
+
+  function v7PlaySound(type = "tap") {
+    if (!v7SoundEnabled()) return;
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      v7AudioCtx = v7AudioCtx || new AudioContext();
+      const ctx = v7AudioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      const profiles = {
+        tap: [420, 0.035, "triangle"],
+        attack: [170, 0.07, "sawtooth"],
+        victory: [620, 0.16, "triangle"],
+        chest: [780, 0.12, "sine"],
+        fail: [110, 0.16, "square"]
+      };
+      const [freq, duration, wave] = profiles[type] || profiles.tap;
+      osc.type = wave;
+      osc.frequency.setValueAtTime(freq, now);
+      if (type === "victory" || type === "chest") osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + duration);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    } catch (error) {}
+  }
+
+  function v7Vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  function v7InstallUI() {
+    v7PatchLabels();
+    const start = $("startScreen");
+    if (start && !$("v7Panel")) {
+      const panel = document.createElement("section");
+      panel.id = "v7Panel";
+      panel.className = "v7-panel";
+      const continueBtn = $("continueBtn");
+      start.insertBefore(panel, continueBtn || start.children[1] || null);
+    }
+
+    const footer = document.querySelector(".footer-actions");
+    if (footer && !$("v7BattleDock")) {
+      const dock = document.createElement("section");
+      dock.id = "v7BattleDock";
+      dock.className = "v7-battle-dock";
+      dock.innerHTML = `
+        <button data-v7-action="openMap">🗺️ Map</button>
+        <button data-v7-action="openInventory">🎒 Gear</button>
+        <button data-v7-action="openSkills">🌲 Skills</button>
+        <button data-v7-action="toggleSound">🔊 Sound</button>
+      `;
+      footer.insertAdjacentElement("afterend", dock);
+    }
+
+    const topBar = document.querySelector(".top-bar");
+    if (topBar && !$("v7CampaignStrip")) {
+      const strip = document.createElement("section");
+      strip.id = "v7CampaignStrip";
+      strip.className = "v7-campaign-strip hidden";
+      topBar.insertAdjacentElement("afterend", strip);
+    }
+
+    if (!$("v7Screen")) {
+      const overlay = document.createElement("section");
+      overlay.id = "v7Screen";
+      overlay.className = "overlay hidden";
+      overlay.innerHTML = `
+        <div class="modal v7-modal">
+          <div class="v7-modal-top">
+            <div>
+              <p class="eyebrow">Campaign HQ</p>
+              <h2 id="v7ModalTitle">Campaign</h2>
+            </div>
+            <button class="close-btn" data-v7-action="close">✕</button>
+          </div>
+          <div class="v7-tab-row">
+            <button data-v7-tab="map">Map</button>
+            <button data-v7-tab="gear">Gear</button>
+            <button data-v7-tab="skills">Skills</button>
+            <button data-v7-tab="chests">Chests</button>
+          </div>
+          <div id="v7Body"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    if (!$("v7CompleteScreen")) {
+      const complete = document.createElement("section");
+      complete.id = "v7CompleteScreen";
+      complete.className = "v7-complete-screen hidden";
+      complete.innerHTML = `<div id="v7CompleteBody" class="v7-complete-card v7-pulse-win"></div>`;
+      document.body.appendChild(complete);
+    }
+
+    document.addEventListener("click", v7HandleClick);
+    v7RenderPanel();
+  }
+
+  function v7HandleClick(event) {
+    const tab = event.target.closest("[data-v7-tab]");
+    if (tab) {
+      v7ActiveTab = tab.dataset.v7Tab;
+      v7Render();
+      v7PlaySound("tap");
+      return;
+    }
+
+    const control = event.target.closest("[data-v7-action]");
+    if (!control) return;
+    const action = control.dataset.v7Action;
+    const id = control.dataset.id;
+    v7PlaySound("tap");
+
+    if (action === "openMap") v7Open("map");
+    if (action === "openInventory") v7Open("gear");
+    if (action === "openSkills") v7Open("skills");
+    if (action === "openChests") v7Open("chests");
+    if (action === "close") v7Close();
+    if (action === "setZone") v7SetZone(id);
+    if (action === "equip") v7EquipGear(id);
+    if (action === "buySkill") v7BuySkill(id);
+    if (action === "claimDaily") v7ClaimDaily();
+    if (action === "openChest") v7OpenChest(Number(control.dataset.index));
+    if (action === "backToMenu") v7BackToMenu();
+    if (action === "nextZone") v7SelectNextZoneAndMenu(id);
+    if (action === "toggleSound") v7ToggleSound();
+  }
+
+  function v7PatchLabels() {
+    document.title = "EMX Soul Arena - Campaign Update";
+    const version = document.querySelector(".version-chip");
+    if (version) version.textContent = V7_UPDATE_NAME;
+    const subtitle = document.querySelector(".brand-title-card .subtitle");
+    if (subtitle) subtitle.textContent = "Campaign zones, permanent gear, skill trees, chests, cinematic combat, HQ upgrades, and multiplayer.";
+    const title = document.querySelector("#startScreen .brand-title-card");
+    if (title && !title.querySelector(".v7-chip")) {
+      const chip = document.createElement("span");
+      chip.className = "v7-chip";
+      chip.textContent = "V7 Campaign";
+      title.appendChild(chip);
+    }
+  }
+
+  function v7Open(tab = "map") {
+    v7ActiveTab = tab;
+    v7Render();
+    $("v7Screen")?.classList.remove("hidden");
+  }
+
+  function v7Close() {
+    $("v7Screen")?.classList.add("hidden");
+  }
+
+  function v7RenderIfOpen() {
+    const screen = $("v7Screen");
+    if (screen && !screen.classList.contains("hidden")) v7Render();
+  }
+
+  function v7RenderPanel() {
+    const panel = $("v7Panel");
+    if (!panel) return;
+    v7Meta = v7EnsureMeta(v7Meta);
+    const activeZone = v7GetActiveZone();
+    const completed = V7_CAMPAIGN_ZONES.filter((zone) => v7Meta.completedZones[zone.id]).length;
+    const dailyReady = v7Meta.lastDaily !== v7TodayKey();
+    panel.innerHTML = `
+      <div class="v7-panel-top">
+        <p class="v7-panel-title">Campaign Update</p>
+        <span class="v7-zone-pill">${activeZone ? `${activeZone.icon} ${activeZone.title}` : "∞ Endless"}</span>
+      </div>
+      <div class="v7-panel-stats">
+        <div class="v7-panel-stat"><small>Zones</small><strong>${completed}/${V7_CAMPAIGN_ZONES.length}</strong></div>
+        <div class="v7-panel-stat"><small>Gear</small><strong>${v7Meta.inventory.length}/${V7_GEAR.length}</strong></div>
+        <div class="v7-panel-stat"><small>Skill Pts</small><strong>${v7Meta.skillPoints}</strong></div>
+      </div>
+      <div class="v7-menu-row">
+        <button data-v7-action="openMap" class="ready">Campaign Map</button>
+        <button data-v7-action="openInventory">Gear Loadout</button>
+        <button data-v7-action="openSkills">Skill Tree</button>
+        <button data-v7-action="${dailyReady ? "claimDaily" : "openChests"}" class="${dailyReady ? "ready" : ""}">${dailyReady ? "Daily Chest Ready" : `Chests ${v7Meta.chests.length}`}</button>
+      </div>
+    `;
+  }
+
+  function v7RenderCampaignStrip() {
+    const strip = $("v7CampaignStrip");
+    if (!strip) return;
+    if (!state?.campaign) {
+      strip.classList.add("hidden");
+      return;
+    }
+    strip.classList.remove("hidden");
+    const zone = v7ZoneById(state.campaign.zoneId);
+    strip.innerHTML = `
+      <div>
+        <strong>${zone?.icon || "🗺️"} ${v7CurrentZoneStepText()}</strong>
+        <span>${state.enemy?.isBoss ? "Final boss" : state.enemy?.isMiniBoss ? "Mini-boss" : "Campaign battle"} • Permanent gear and skill rewards on clear</span>
+      </div>
+      <span class="v7-zone-pill">Tier ${state.campaign.zoneTier}</span>
+    `;
+  }
+
+  function v7Render() {
+    v7Meta = v7EnsureMeta(v7Meta);
+    const body = $("v7Body");
+    if (!body) return;
+    const title = $("v7ModalTitle");
+    const labels = { map: "Campaign Map", gear: "Gear Loadout", skills: "Skill Tree", chests: "Chests + Daily" };
+    if (title) title.textContent = labels[v7ActiveTab] || "Campaign";
+    document.querySelectorAll("[data-v7-tab]").forEach((button) => button.classList.toggle("active", button.dataset.v7Tab === v7ActiveTab));
+    if (v7ActiveTab === "map") body.innerHTML = v7RenderMap();
+    if (v7ActiveTab === "gear") body.innerHTML = v7RenderGear();
+    if (v7ActiveTab === "skills") body.innerHTML = v7RenderSkills();
+    if (v7ActiveTab === "chests") body.innerHTML = v7RenderChests();
+    v7RenderPanel();
+  }
+
+  function v7RenderMap() {
+    const endlessActive = v7Meta.activeZone === "endless";
+    const cards = V7_CAMPAIGN_ZONES.map((zone) => {
+      const unlocked = v7IsZoneUnlocked(zone.id);
+      const active = v7Meta.activeZone === zone.id;
+      const completed = Boolean(v7Meta.completedZones[zone.id]);
+      const best = v7Meta.zoneBest[zone.id] || 0;
+      return `
+        <div class="v7-zone-card ${active ? "active" : ""} ${unlocked ? "" : "locked"}">
+          <div class="v7-zone-top">
+            <div class="v7-zone-name"><span class="v7-zone-icon">${zone.icon}</span><strong>${zone.title}</strong></div>
+            <span class="v7-tag">Tier ${zone.tier}</span>
+          </div>
+          <p>${zone.subtitle}</p>
+          <div class="v7-tag-row">
+            <span class="v7-tag">Battles ${zone.length}</span>
+            <span class="v7-tag">Best ${best}/${zone.length}</span>
+            <span class="v7-tag">Reward: +${zone.rewardSkillPoints} SP</span>
+            <span class="v7-tag">${completed ? "✅ Cleared" : unlocked ? "Unlocked" : zone.unlockText}</span>
+          </div>
+          <button class="${unlocked ? "ready" : ""}" data-v7-action="setZone" data-id="${zone.id}" ${unlocked ? "" : "disabled"}>${active ? "Selected — Pick Class Below" : completed ? "Replay Zone" : unlocked ? "Select Zone" : "Locked"}</button>
+        </div>`;
+    }).join("");
+
+    return `
+      <div class="v7-equipped-banner">
+        <h3>How Campaign Works</h3>
+        <small>Select a zone, close this menu, then pick a class. Clear the final boss to unlock the next zone, permanent gear, chests, and skill points.</small>
+      </div>
+      <div class="v7-zone-card ${endlessActive ? "active" : ""}">
+        <div class="v7-zone-top"><div class="v7-zone-name"><span class="v7-zone-icon">∞</span><strong>Endless Arena</strong></div><span class="v7-tag">Classic</span></div>
+        <p>Use the original endless wave mode with gear and skill bonuses active.</p>
+        <button class="ready" data-v7-action="setZone" data-id="endless">${endlessActive ? "Selected" : "Select Endless"}</button>
+      </div>
+      <div class="v7-grid">${cards}</div>
+    `;
+  }
+
+  function v7RenderGear() {
+    const equipped = `<div class="v7-equipped-banner"><h3>Equipped Gear</h3><div class="v7-equipped-row">${v7GearSlotsText()}</div><small>Gear changes apply to your next run. Beat zones and open chests to collect more gear.</small></div>`;
+    const cards = v7Meta.inventory.map((id) => {
+      const gear = v7GearById(id);
+      if (!gear) return "";
+      const equippedNow = v7Meta.equipped[gear.slot] === gear.id;
+      return `
+        <div class="v7-gear-card ${v7RarityClass(gear.rarity)} ${equippedNow ? "equipped" : ""}">
+          <div class="v7-gear-top">
+            <div class="v7-gear-name"><span class="v7-gear-icon">${gear.icon}</span><strong>${gear.title}</strong></div>
+            <span class="v7-tag v7-rarity-${v7RarityClass(gear.rarity)}">${gear.rarity}</span>
+          </div>
+          <p>${gear.desc}</p>
+          <div class="v7-tag-row"><span class="v7-tag">${gear.slot.toUpperCase()}</span><span class="v7-tag">Permanent</span></div>
+          <button class="${equippedNow ? "" : "ready"}" data-v7-action="equip" data-id="${gear.id}" ${equippedNow ? "disabled" : ""}>${equippedNow ? "Equipped" : `Equip ${gear.slot}`}</button>
+        </div>`;
+    }).join("");
+    return `${equipped}<div class="v7-grid">${cards}</div>`;
+  }
+
+  function v7RenderSkills() {
+    const cards = V7_SKILL_NODES.map((node) => {
+      const rank = v7Meta.skills[node.id] || 0;
+      const maxed = rank >= node.max;
+      const cost = node.cost + Math.floor(rank / 2);
+      const canBuy = v7Meta.skillPoints >= cost && !maxed;
+      const pct = Math.round((rank / node.max) * 100);
+      return `
+        <div class="v7-skill-card ${rank ? "owned" : ""}">
+          <div class="v7-skill-top">
+            <div class="v7-skill-name"><span class="v7-skill-icon">${node.icon}</span><strong>${node.title}</strong></div>
+            <span class="v7-tag">${rank}/${node.max}</span>
+          </div>
+          <p>${node.desc}</p>
+          <div class="hq-progress"><div class="hq-progress-fill" style="width:${pct}%"></div></div>
+          <button class="${canBuy ? "ready" : ""}" data-v7-action="buySkill" data-id="${node.id}" ${canBuy ? "" : "disabled"}>${maxed ? "Maxed" : `Upgrade • ${cost} SP`}</button>
+        </div>`;
+    }).join("");
+    return `
+      <div class="v7-equipped-banner"><h3>Skill Points: ${v7Meta.skillPoints}</h3><small>Earn skill points from campaign zone clears, mythic upgrades, and chest bonuses. These are permanent.</small></div>
+      <div class="v7-grid">${cards}</div>
+    `;
+  }
+
+  function v7RenderChests() {
+    const dailyReady = v7Meta.lastDaily !== v7TodayKey();
+    const chestCards = v7Meta.chests.length ? v7Meta.chests.map((chest, index) => `
+      <div class="v7-chest-card">
+        <div class="v7-chest-top"><strong>🎁 ${chest.type}</strong><span class="v7-tag">Gear Roll</span></div>
+        <p>Open for permanent gear, HQ crystals, and a chance at bonus skill points.</p>
+        <button class="ready" data-v7-action="openChest" data-index="${index}">Open Chest</button>
+      </div>
+    `).join("") : `<div class="v7-chest-card"><strong>No chests waiting.</strong><p>Clear zones, beat bosses, buy Gear Crates, or claim your daily reward.</p></div>`;
+    return `
+      <div class="v7-chest-card ${dailyReady ? "v7-pulse-win" : ""}">
+        <div class="v7-chest-top"><strong>📅 Daily Supply Drop</strong><span class="v7-tag">${dailyReady ? "Ready" : "Claimed"}</span></div>
+        <p>Claim once per day for a chest and bonus HQ crystals.</p>
+        <button class="${dailyReady ? "ready" : ""}" data-v7-action="claimDaily" ${dailyReady ? "" : "disabled"}>${dailyReady ? "Claim Daily Chest" : "Come Back Tomorrow"}</button>
+      </div>
+      <div class="v7-grid">${chestCards}</div>
+    `;
+  }
+
+  function v7SetZone(id) {
+    if (id !== "endless" && !v7IsZoneUnlocked(id)) {
+      v7Toast("That zone is still locked.");
+      return;
+    }
+    v7Meta.activeZone = id;
+    v7SaveMeta();
+    v7Render();
+    const zone = id === "endless" ? null : v7ZoneById(id);
+    v7Toast(zone ? `${zone.title} selected. Pick a class to start.` : "Endless Arena selected.");
+  }
+
+  function v7EquipGear(id) {
+    const gear = v7GearById(id);
+    if (!gear || !v7Meta.inventory.includes(id)) return;
+    v7Meta.equipped[gear.slot] = id;
+    v7SaveMeta();
+    v7Render();
+    v7Toast(`${gear.title} equipped for your next run.`);
+  }
+
+  function v7BuySkill(id) {
+    const node = v7SkillById(id);
+    if (!node) return;
+    const rank = v7Meta.skills[id] || 0;
+    if (rank >= node.max) return;
+    const cost = node.cost + Math.floor(rank / 2);
+    if (v7Meta.skillPoints < cost) return;
+    v7Meta.skillPoints -= cost;
+    v7Meta.skills[id] = rank + 1;
+    v7SaveMeta();
+    v7Render();
+    v7Toast(`${node.title} upgraded to rank ${rank + 1}.`);
+    v7PlaySound("chest");
+  }
+
+  function v7ClaimDaily() {
+    if (v7Meta.lastDaily === v7TodayKey()) return;
+    v7Meta.lastDaily = v7TodayKey();
+    v7AddChest("Daily Chest");
+    if (typeof hqAwardCrystals === "function") hqAwardCrystals(25, "Daily Campaign Supply");
+    v7SaveMeta();
+    v7Open("chests");
+    v7Toast("Daily Chest claimed.");
+    v7PlaySound("chest");
+  }
+
+  function v7ShowZoneComplete(zoneId) {
+    const zone = v7ZoneById(zoneId);
+    const next = V7_CAMPAIGN_ZONES[v7ZoneIndex(zoneId) + 1];
+    const body = $("v7CompleteBody");
+    if (!body || !zone) return;
+    body.innerHTML = `
+      <div class="v7-complete-icon">${zone.icon}</div>
+      <p class="eyebrow">Zone Cleared</p>
+      <h2>${zone.title} Complete</h2>
+      <small>You unlocked permanent rewards, a gear chest, +${zone.rewardSkillPoints} skill points, and ${next ? `${next.title}` : "the end of the current campaign"}.</small>
+      <div class="v7-tag-row" style="justify-content:center">
+        <span class="v7-tag">Gear: ${v7GearById(zone.rewardGear)?.title || "Reward"}</span>
+        <span class="v7-tag">Chests: ${v7Meta.chests.length}</span>
+        <span class="v7-tag">Skill Points: ${v7Meta.skillPoints}</span>
+      </div>
+      <div class="v7-complete-actions">
+        <button class="ready" data-v7-action="backToMenu">Back to Menu</button>
+        <button data-v7-action="nextZone" data-id="${next?.id || "endless"}">${next ? "Select Next Zone" : "Select Endless"}</button>
+      </div>
+    `;
+    $("v7CompleteScreen")?.classList.remove("hidden");
+  }
+
+  function v7BackToMenu() {
+    localStorage.removeItem(SAVE_KEY);
+    state = null;
+    recentLog = [];
+    $("v7CompleteScreen")?.classList.add("hidden");
+    $("battleScreen")?.classList.add("hidden");
+    $("gameOverScreen")?.classList.add("hidden");
+    $("shopScreen")?.classList.add("hidden");
+    $("upgradeScreen")?.classList.add("hidden");
+    $("startScreen")?.classList.remove("hidden");
+    updateContinueButton();
+    v7RenderPanel();
+  }
+
+  function v7SelectNextZoneAndMenu(id) {
+    v7SetZone(id);
+    v7BackToMenu();
+  }
+
+  // New reward/shop pools.
+  if (typeof EXTRA_UPGRADES !== "undefined") EXTRA_UPGRADES.push(...V7_CAMPAIGN_UPGRADES);
+  else if (typeof UPGRADES !== "undefined") UPGRADES.push(...V7_CAMPAIGN_UPGRADES);
+  if (typeof SHOP_ITEMS !== "undefined") SHOP_ITEMS.push(...V7_SHOP_ITEMS);
+  if (typeof BOSS_LOOT !== "undefined") {
+    BOSS_LOOT.push(
+      { id: "v7CampaignCodex", rarity: "Epic", icon: "🗺️", title: "Campaign Codex", desc: "Campaign enemies take +20% damage this run.", effect() { state.mods.v7CampaignDamage += 0.2; } },
+      { id: "v7GearPrinter", rarity: "Legendary", icon: "🧬", title: "Gear Printer", desc: "Adds a permanent Boss Gear Chest to your Campaign menu.", effect() { v7AddChest("Boss Gear Chest"); } },
+      { id: "v7SkillBattery", rarity: "Legendary", icon: "🔋", title: "Skill Battery", desc: "Gain +1 permanent skill point and +12 ultimate gain.", effect() { v7Meta.skillPoints += 1; state.mods.ultGain += 12; v7SaveMeta(); } }
+    );
+  }
+
+  // Patch defaults and state hydration.
+  const v7OldDefaultMods = defaultMods;
+  defaultMods = function v7DefaultMods() {
+    return {
+      ...v7OldDefaultMods(),
+      v7CampaignDamage: 0,
+      v7BossResist: 0,
+      v7BossPrepShield: 0,
+      v7GearLuck: 0,
+      v7ChestLuck: 0,
+      v7CoinBoost: 0,
+      v7XpBoost: 0
+    };
+  };
+
+  const v7OldEnsureV3State = ensureV3State;
+  ensureV3State = function v7EnsureV3State() {
+    v7OldEnsureV3State();
+    if (!state) return;
+    state.mods = { ...defaultMods(), ...(state.mods || {}) };
+    if (state.campaign) {
+      state.campaign.zoneBattle = state.campaign.zoneBattle || 1;
+      state.campaign.zoneLength = state.campaign.zoneLength || v7ZoneById(state.campaign.zoneId)?.length || 5;
+      state.campaign.zoneTitle = state.campaign.zoneTitle || v7ZoneById(state.campaign.zoneId)?.title || "Campaign Zone";
+      state.campaign.zoneTier = state.campaign.zoneTier || v7ZoneById(state.campaign.zoneId)?.tier || 1;
+      state.campaign.zoneCleared = Boolean(state.campaign.zoneCleared);
+      state.campaign.rewarded = Boolean(state.campaign.rewarded);
+    }
+  };
+
+  const v7OldMakeState = makeState;
+  makeState = function v7MakeState(classKey) {
+    const newState = v7OldMakeState(classKey);
+    v7Meta = v7EnsureMeta(v7Meta);
+    v7CreateCampaignRun(newState);
+    v7ApplyGearAndSkillsToState(newState);
+    newState.v7 = { update: V7_UPDATE_NAME, sound: v7SoundEnabled() };
+    return newState;
+  };
+
+  const v7OldStartNewRun = startNewRun;
+  startNewRun = function v7StartNewRun(classKey) {
+    v7OldStartNewRun(classKey);
+    if (state?.campaign) {
+      addLog(`Campaign run started: ${state.campaign.zoneTitle}.`);
+      addLog(`Equipped gear: ${(state.v7GearApplied || []).join(", ") || "none"}.`);
+    } else {
+      addLog("Endless Arena started with permanent gear and skill bonuses.");
+    }
+    render();
+    saveGame();
+    v7PlaySound("chest");
+  };
+
+  const v7OldCreateEnemy = createEnemy;
+  createEnemy = function v7CreateEnemy(wave) {
+    if (state?.campaign?.zoneId) {
+      const zone = v7ZoneById(state.campaign.zoneId);
+      if (zone) return v7CreateCampaignEnemy(zone, state.campaign.zoneBattle || 1);
+    }
+    return v7OldCreateEnemy(wave);
+  };
+
+  const v7OldStartFight = startFight;
+  startFight = function v7StartFight() {
+    v7OldStartFight();
+    if (!state?.campaign || !state.enemy) return;
+    const prepKey = `${state.campaign.zoneId}-${state.campaign.zoneBattle}`;
+    if ((state.enemy.isBoss || state.enemy.isMiniBoss) && state.v7LastPrepKey !== prepKey) {
+      state.v7LastPrepKey = prepKey;
+      const shield = 22 + state.campaign.zoneTier * 5 + (state.mods.v7BossPrepShield || 0);
+      state.player.shield += shield;
+      state.player.mana = clamp(state.player.mana + 18, 0, state.player.maxMana);
+      state.player.ult = clamp(state.player.ult + 16, 0, state.player.maxUlt);
+      addLog(`${state.enemy.isBoss ? "Final boss" : "Mini-boss"} prep: +${shield} shield, mana, and ultimate charge.`);
+      render();
+      saveGame();
+    }
+  };
+
+  const v7OldCalculatePlayerDamage = calculatePlayerDamage;
+  calculatePlayerDamage = function v7CalculatePlayerDamage(key, power) {
+    const result = v7OldCalculatePlayerDamage(key, power);
+    if (state?.campaign) result.damage = Math.round(result.damage * (1 + (state.mods.v7CampaignDamage || 0)));
+    if (state?.enemy?.isMiniBoss) result.damage = Math.round(result.damage * 1.08);
+    return result;
+  };
+
+  const v7OldDamagePlayer = damagePlayer;
+  damagePlayer = function v7DamagePlayer(amount) {
+    let tuned = amount;
+    if (state?.campaign && state?.enemy?.isBoss) tuned = Math.round(tuned * Math.max(0.58, 0.82 - (state.mods.v7BossResist || 0)));
+    if (state?.campaign && state?.enemy?.isMiniBoss) tuned = Math.round(tuned * Math.max(0.65, 0.9 - (state.mods.v7BossResist || 0) * 0.5));
+    v7OldDamagePlayer(tuned);
+  };
+
+  const v7OldChooseEnemyMove = chooseEnemyMove;
+  chooseEnemyMove = function v7ChooseEnemyMove() {
+    const move = v7OldChooseEnemyMove();
+    if (state?.campaign && state.enemy?.isBoss && move?.big) addLog("Boss warning: shield, stun, heal, or burst before the next heavy hit.");
+    return move;
+  };
+
+  const v7OldUsePower = usePower;
+  usePower = async function v7UsePower(key) {
+    const canSound = state && state.phase === "player";
+    if (canSound) {
+      v7PlaySound(key === "heal" || key === "guard" ? "tap" : "attack");
+      if (key === "ultimate") v7Vibrate([40, 40, 90]);
+      else v7Vibrate(30);
+    }
+    await v7OldUsePower(key);
+  };
+
+  const v7OldWinFight = winFight;
+  winFight = function v7WinFight() {
+    const wasCampaign = Boolean(state?.campaign);
+    const zoneId = state?.campaign?.zoneId;
+    const zoneStep = state?.campaign?.zoneBattle || 0;
+    const wasFinal = Boolean(state?.enemy?.v7ZoneFinal);
+    const wasMini = Boolean(state?.enemy?.isMiniBoss);
+    const wasBoss = Boolean(state?.enemy?.isBoss);
+    v7OldWinFight();
+    if (!state || state.phase === "gameover") return;
+
+    if (wasCampaign && zoneId) {
+      v7Meta.zoneBest[zoneId] = Math.max(v7Meta.zoneBest[zoneId] || 0, zoneStep);
+      const zone = v7ZoneById(zoneId);
+      const xpBonus = Math.round((10 + zoneStep * 3) * (1 + (state.mods.v7XpBoost || 0)));
+      const coinBonus = Math.round((8 + zoneStep * 2) * (1 + (state.mods.v7CoinBoost || 0)));
+      state.xp += xpBonus;
+      state.coins += coinBonus;
+      checkLevelUp();
+      addLog(`Campaign bonus: +${xpBonus} XP, +${coinBonus} coins.`);
+      if (wasMini) {
+        v7AddChest(`${zone?.title || "Mini-Boss"} Mini Chest`);
+        addLog("Mini-boss dropped a campaign chest.");
+      }
+      if (wasFinal || (zone && zoneStep >= zone.length && wasBoss)) v7CompleteZone(zoneId);
+      else if (state.v7ExtraChestReady && Math.random() < 0.08) v7AddChest("Loot Scanner Chest");
+      v7SaveMeta();
+      render();
+      saveGame();
+    }
+
+    if (!wasCampaign && wasBoss && Math.random() < 0.35) {
+      v7AddChest("Endless Boss Chest");
+      addLog("Endless boss dropped a permanent gear chest.");
+    }
+    v7PlaySound("victory");
+  };
+
+  const v7OldChooseUpgrade = chooseUpgrade;
+  chooseUpgrade = function v7ChooseUpgrade(id) {
+    if (v7CampaignCompletePending()) {
+      const upgrade = getAvailableUpgradePool().find((item) => item.id === id);
+      if (!upgrade) return;
+      upgrade.apply();
+      addLog(`${upgrade.kind || "Upgrade"} chosen: ${upgrade.title}.`);
+      $("upgradeScreen")?.classList.add("hidden");
+      render();
+      saveGame();
+      v7EndCampaignRun();
+      return;
+    }
+    if (state?.campaign && !state.campaign.zoneCleared) {
+      state.campaign.zoneBattle += 1;
+    }
+    v7OldChooseUpgrade(id);
+  };
+
+  const v7OldBuyShopItem = buyShopItem;
+  buyShopItem = function v7BuyShopItem(id) {
+    v7OldBuyShopItem(id);
+    v7SaveMeta();
+  };
+
+  const v7OldRender = render;
+  render = function v7RenderPatched() {
+    v7OldRender();
+    v7PatchLabels();
+    v7RenderCampaignStrip();
+    v7RenderPanel();
+    const soundButton = document.querySelector('[data-v7-action="toggleSound"]');
+    if (soundButton) soundButton.textContent = v7SoundEnabled() ? "🔊 Sound" : "🔇 Muted";
+  };
+
+  const v7OldLoadGame = loadGame;
+  loadGame = function v7LoadGame() {
+    const loaded = v7OldLoadGame();
+    if (loaded) {
+      ensureV3State();
+      if (state?.phase === "complete") v7ShowZoneComplete(state.campaign?.zoneId);
+      render();
+    }
+    return loaded;
+  };
+
+  const v7OldGameOver = gameOver;
+  gameOver = function v7GameOver() {
+    v7PlaySound("fail");
+    v7Vibrate([100, 40, 140]);
+    v7OldGameOver();
+  };
+
+  v7InstallUI();
+  v7SaveMeta();
+  v7PatchLabels();
+})();

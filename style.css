@@ -1880,3 +1880,408 @@ p {
 .small-btn.online {
   color: #d72cff;
 }
+
+/* === EMX Soul Arena v7: Campaign / Gear / Skill Tree Update === */
+.v7-chip {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: linear-gradient(90deg, rgba(148,255,0,0.18), rgba(224,37,255,0.18));
+  color: #fff;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 1000;
+}
+
+.v7-panel {
+  padding: 13px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(14,16,31,0.92), rgba(28,18,48,0.86));
+  box-shadow: 0 18px 60px rgba(0,0,0,0.3), 0 0 38px rgba(148,255,0,0.08), 0 0 44px rgba(224,37,255,0.08);
+}
+
+.v7-panel-top,
+.v7-modal-top,
+.v7-complete-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v7-panel-title {
+  margin: 0;
+  font-size: 0.77rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 1000;
+}
+
+.v7-zone-pill,
+.v7-skill-pill,
+.v7-gear-pill {
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.08);
+  color: #d8ff38;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.v7-panel-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.v7-panel-stat {
+  min-height: 54px;
+  padding: 9px 7px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+}
+
+.v7-panel-stat small,
+.v7-zone-card small,
+.v7-gear-card small,
+.v7-skill-card small,
+.v7-chest-card small,
+.v7-complete-card small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.32;
+}
+
+.v7-panel-stat strong {
+  display: block;
+  margin-top: 4px;
+  color: white;
+}
+
+.v7-menu-row,
+.v7-battle-dock,
+.v7-tab-row,
+.v7-complete-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.v7-menu-row button,
+.v7-battle-dock button,
+.v7-tab-row button,
+.v7-action-btn {
+  min-height: 44px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(135deg, rgba(44,45,85,0.92), rgba(31,32,58,0.92));
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.v7-menu-row button.ready,
+.v7-battle-dock button.ready,
+.v7-action-btn.ready,
+.v7-tab-row button.active {
+  background: linear-gradient(135deg, rgba(148,255,0,0.9), rgba(255,255,255,0.92), rgba(224,37,255,0.9));
+  color: #080811;
+  box-shadow: 0 0 24px rgba(224,37,255,0.22), 0 0 22px rgba(148,255,0,0.18);
+}
+
+.v7-battle-dock {
+  margin-top: 0;
+  padding: 9px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(15,16,30,0.78);
+}
+
+.v7-campaign-strip {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgba(148,255,0,0.12), rgba(224,37,255,0.12));
+}
+
+.v7-campaign-strip strong,
+.v7-complete-card strong {
+  display: block;
+}
+
+.v7-campaign-strip span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.v7-modal {
+  max-height: min(82vh, 780px);
+  overflow: auto;
+}
+
+.v7-tab-row {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.v7-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.v7-zone-card,
+.v7-gear-card,
+.v7-skill-card,
+.v7-chest-card,
+.v7-complete-card {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding: 13px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(135deg, rgba(31,32,58,0.94), rgba(14,16,31,0.94));
+  text-align: left;
+}
+
+.v7-zone-card::before,
+.v7-gear-card::before,
+.v7-skill-card::before,
+.v7-chest-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  pointer-events: none;
+  background: radial-gradient(circle at top right, currentColor, transparent 34%);
+}
+
+.v7-zone-card.locked,
+.v7-skill-card.locked,
+.v7-gear-card.locked {
+  filter: grayscale(0.65);
+  opacity: 0.62;
+}
+
+.v7-zone-card.active,
+.v7-gear-card.equipped,
+.v7-skill-card.owned {
+  border-color: rgba(148,255,0,0.55);
+  box-shadow: 0 0 26px rgba(148,255,0,0.13), inset 0 0 22px rgba(148,255,0,0.04);
+}
+
+.v7-zone-top,
+.v7-gear-top,
+.v7-skill-top,
+.v7-chest-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.v7-zone-name,
+.v7-gear-name,
+.v7-skill-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v7-zone-icon,
+.v7-gear-icon,
+.v7-skill-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.09);
+  border: 1px solid rgba(255,255,255,0.11);
+  font-size: 1.35rem;
+}
+
+.v7-zone-card p,
+.v7-gear-card p,
+.v7-skill-card p,
+.v7-chest-card p {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.36;
+  font-size: 0.84rem;
+}
+
+.v7-tag-row,
+.v7-equipped-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.v7-tag,
+.v7-slot-tag {
+  display: inline-grid;
+  place-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.08);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.v7-zone-card button,
+.v7-gear-card button,
+.v7-skill-card button,
+.v7-chest-card button,
+.v7-complete-actions button {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.09);
+  color: white;
+  font-weight: 1000;
+}
+
+.v7-zone-card button.ready,
+.v7-gear-card button.ready,
+.v7-skill-card button.ready,
+.v7-chest-card button.ready {
+  background: linear-gradient(135deg, #98ff2f, #ffffff, #dc2fff);
+  color: #070711;
+}
+
+.v7-rarity-common { color: #c4ccff; }
+.v7-rarity-rare { color: #61c7ff; }
+.v7-rarity-epic { color: #d56cff; }
+.v7-rarity-legendary { color: #ffe45e; }
+.v7-rarity-mythic { color: #99ff33; }
+
+.v7-gear-card.common { border-color: rgba(196,204,255,0.32); color: #c4ccff; }
+.v7-gear-card.rare { border-color: rgba(97,199,255,0.5); color: #61c7ff; }
+.v7-gear-card.epic { border-color: rgba(213,108,255,0.58); color: #d56cff; }
+.v7-gear-card.legendary { border-color: rgba(255,228,94,0.6); color: #ffe45e; }
+.v7-gear-card.mythic { border-color: rgba(153,255,51,0.68); color: #99ff33; }
+
+.v7-equipped-banner {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.v7-equipped-banner h3,
+.v7-section-title {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.v7-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + var(--safe-bottom));
+  z-index: 1000;
+  transform: translateX(-50%) translateY(20px);
+  width: min(420px, calc(100% - 24px));
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(8,8,18,0.92);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.46), 0 0 34px rgba(224,37,255,0.16);
+  color: white;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.v7-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.v7-complete-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: radial-gradient(circle at top, rgba(148,255,0,0.18), transparent 38%), radial-gradient(circle at bottom, rgba(224,37,255,0.22), transparent 40%), rgba(0,0,0,0.82);
+  backdrop-filter: blur(10px);
+}
+
+.v7-complete-card {
+  width: min(520px, 100%);
+  text-align: center;
+}
+
+.v7-complete-icon {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(148,255,0,0.18), rgba(224,37,255,0.18));
+  border: 1px solid rgba(255,255,255,0.16);
+  font-size: 2.8rem;
+  box-shadow: 0 0 42px rgba(224,37,255,0.22), 0 0 32px rgba(148,255,0,0.18);
+}
+
+.v7-complete-actions {
+  grid-template-columns: 1fr 1fr;
+}
+
+.v7-pulse-win {
+  animation: v7PulseWin 1.5s ease infinite;
+}
+
+@keyframes v7PulseWin {
+  0%,100% { box-shadow: 0 0 22px rgba(148,255,0,0.08), 0 0 28px rgba(224,37,255,0.08); }
+  50% { box-shadow: 0 0 42px rgba(148,255,0,0.28), 0 0 54px rgba(224,37,255,0.22); }
+}
+
+@media (min-width: 620px) {
+  .v7-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .v7-menu-row,
+  .v7-battle-dock {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
