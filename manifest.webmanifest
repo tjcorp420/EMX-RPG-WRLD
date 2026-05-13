@@ -1,7 +1,7 @@
 {
-  "name": "EMX Soul Arena - Sound + Kid Fun",
+  "name": "EMX Soul Arena - Story World",
   "short_name": "Soul Arena",
-  "description": "EMX Soul Arena with Sound Lab, Kid Mode, Sticker Book, Training Dojo, Campaign, Gear, and Multiplayer.",
+  "description": "EMX Soul Arena with EMX City Hub, Story Chapters, Challenge Tower, Pet Bonding, Power Loadouts, Sticker Book 2.0, Weekly Events, Profile Card, Campaign, Gear, and Multiplayer.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

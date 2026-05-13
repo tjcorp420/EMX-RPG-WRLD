@@ -7481,3 +7481,3153 @@ v5PatchLabels();
     if (state) render();
   }, 300);
 })();
+
+/* === EMX Soul Arena v10: Audio Pack Fix + Fun Arcade Update === */
+(function emxSoulArenaV10() {
+  const V10_UPDATE_NAME = "Audio Pack + Fun Arcade";
+  const V10_META_KEY = "emxSoulArenaFunArcade_v10";
+  const V10_SOUND_KEY = "emxSoulArenaSound_v7";
+  const V10_VOLUME_KEY = "emxSoulArenaVolume_v9";
+  const V10_PACK_KEY = "emxSoulArenaAudioPack_v10";
+  const V10_COLLECTION_KEY = "emxSoulArenaCollection_v1";
+  const V10_HQ_KEY = "emxSoulArenaMeta_v4";
+
+  const SFX_PATH = "./assets/sfx/";
+  const SFX_FILES = {
+    tap: "tap.wav",
+    coin: "coin.wav",
+    upgrade: "upgrade.wav",
+    fire: "fire.wav",
+    fireball: "fireball.wav",
+    meteor: "meteor.wav",
+    nova: "nova.wav",
+    slash: "slash.wav",
+    attack: "attack.wav",
+    combo: "combo.wav",
+    lightning: "lightning.wav",
+    ice: "ice.wav",
+    freeze: "freeze.wav",
+    poison: "poison.wav",
+    shadow: "shadow.wav",
+    drain: "drain.wav",
+    heal: "heal.wav",
+    shield: "shield.wav",
+    enemy: "enemy.wav",
+    boss: "boss.wav",
+    victory: "victory.wav",
+    chest: "chest.wav",
+    fail: "fail.wav",
+    pet: "pet.wav",
+    sticker: "sticker.wav",
+    unlock: "unlock.wav",
+    riddle: "riddle.wav",
+    spin: "spin.wav",
+    memory: "memory.wav",
+    wrong: "wrong.wav"
+  };
+
+  const SFX_ALIAS = {
+    thunder: "lightning",
+    storm: "lightning",
+    zap: "lightning",
+    flame: "fire",
+    burn: "fire",
+    warm: "heal",
+    bloom: "heal",
+    barrier: "shield",
+    guard: "shield",
+    parry: "shield",
+    void: "shadow",
+    night: "shadow",
+    toxic: "poison",
+    spores: "poison",
+    chestOpen: "chest",
+    win: "victory",
+    lose: "fail",
+    block: "shield"
+  };
+
+  const REACTION_REWARDS = [
+    { label: "Sonic Reflex", max: 280, tickets: 10, crystals: 8 },
+    { label: "Fast", max: 450, tickets: 7, crystals: 5 },
+    { label: "Good", max: 700, tickets: 5, crystals: 3 },
+    { label: "Nice Try", max: 99999, tickets: 3, crystals: 1 }
+  ];
+
+  const RIDDLES = [
+    { q: "Which power should you use before a boss charges a huge attack?", choices: ["Shield", "Delete Save", "Do Nothing"], answer: 0 },
+    { q: "What helps you unlock new powers during a run?", choices: ["Leveling up", "Closing the app", "Losing coins"], answer: 0 },
+    { q: "Which status keeps hurting enemies every turn?", choices: ["Burn", "Empty Mana", "Low Battery"], answer: 0 },
+    { q: "What should you do if your HP is low?", choices: ["Heal or Shield", "Only attack", "Ignore it"], answer: 0 },
+    { q: "What gives permanent progress outside a run?", choices: ["HQ, Gear, Skills", "Only one battle", "Random guessing"], answer: 0 }
+  ];
+
+  let v10Meta = v10LoadMeta();
+  let reactionTimer = null;
+  let reactionStartAt = 0;
+  let reactionReady = false;
+  let memoryCards = [];
+  let flippedCards = [];
+  let matchedCards = 0;
+
+  const oldSound = window.EMXSound;
+  const oldPlay = oldSound && typeof oldSound.play === "function" ? oldSound.play.bind(oldSound) : null;
+  const oldUnlock = oldSound && typeof oldSound.unlock === "function" ? oldSound.unlock.bind(oldSound) : null;
+
+  const AudioPack = {
+    cache: {},
+    unlocked: false,
+    lastResult: "Not tested yet",
+    lastType: "none",
+    failReason: "",
+
+    soundOn() {
+      return localStorage.getItem(V10_SOUND_KEY) !== "off";
+    },
+
+    volume() {
+      const raw = Number(localStorage.getItem(V10_VOLUME_KEY));
+      return Number.isFinite(raw) ? clamp(raw, 0, 1) : 0.8;
+    },
+
+    normalize(type) {
+      const raw = String(type || "tap").trim();
+      return SFX_FILES[raw] ? raw : SFX_ALIAS[raw] || (SFX_FILES[raw.toLowerCase()] ? raw.toLowerCase() : "tap");
+    },
+
+    get(type) {
+      const key = this.normalize(type);
+      if (!SFX_FILES[key]) return null;
+      if (!this.cache[key]) {
+        const audio = new Audio(`${SFX_PATH}${SFX_FILES[key]}`);
+        audio.preload = "auto";
+        audio.playsInline = true;
+        audio.setAttribute("playsinline", "");
+        audio.setAttribute("webkit-playsinline", "");
+        audio.crossOrigin = "anonymous";
+        this.cache[key] = audio;
+      }
+      return this.cache[key];
+    },
+
+    preload() {
+      Object.keys(SFX_FILES).forEach((key) => {
+        const audio = this.get(key);
+        if (!audio) return;
+        try { audio.load(); } catch (error) {}
+      });
+    },
+
+    async unlock(type = "unlock") {
+      localStorage.setItem(V10_SOUND_KEY, "on");
+      localStorage.setItem(V10_PACK_KEY, "ready");
+      this.preload();
+      let htmlOk = false;
+      try {
+        const audio = this.get(type || "unlock");
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+          audio.volume = Math.max(0.05, this.volume());
+          const result = audio.play();
+          if (result && typeof result.then === "function") await result;
+          htmlOk = true;
+          this.unlocked = true;
+          this.lastResult = "Audio Pack Ready";
+          this.lastType = type || "unlock";
+          this.failReason = "";
+        }
+      } catch (error) {
+        this.failReason = error?.name || error?.message || "play blocked";
+        this.lastResult = `Audio blocked: ${this.failReason}`;
+      }
+
+      try {
+        if (oldUnlock) await oldUnlock(false);
+      } catch (error) {}
+
+      v10RenderAudioStatus();
+      v10RenderPanel();
+      return htmlOk || Boolean(oldSound?.unlocked);
+    },
+
+    play(type = "tap") {
+      if (!this.soundOn()) return;
+      const key = this.normalize(type);
+      this.lastType = key;
+
+      const audio = this.get(key);
+      if (audio) {
+        try {
+          const player = audio.cloneNode(true);
+          player.preload = "auto";
+          player.playsInline = true;
+          player.volume = Math.max(0.01, this.volume());
+          player.currentTime = 0;
+          const promise = player.play();
+          if (promise && typeof promise.then === "function") {
+            promise.then(() => {
+              this.unlocked = true;
+              this.lastResult = `Played ${key}`;
+              this.failReason = "";
+              v10RenderAudioStatus();
+            }).catch((error) => {
+              this.failReason = error?.name || error?.message || "play blocked";
+              this.lastResult = `Blocked ${key}: ${this.failReason}`;
+              if (oldPlay) oldPlay(key);
+              v10RenderAudioStatus();
+            });
+          } else {
+            this.unlocked = true;
+            this.lastResult = `Played ${key}`;
+          }
+        } catch (error) {
+          this.failReason = error?.name || error?.message || "play error";
+          this.lastResult = `Audio error: ${this.failReason}`;
+          if (oldPlay) oldPlay(key);
+        }
+      } else if (oldPlay) {
+        oldPlay(key);
+      }
+    }
+  };
+
+  if (oldSound) {
+    oldSound.play = (type) => AudioPack.play(type);
+    oldSound.unlock = (playWake = false) => AudioPack.unlock(playWake ? "unlock" : "tap");
+    oldSound.v10AudioPack = AudioPack;
+  } else {
+    window.EMXSound = { play: (type) => AudioPack.play(type), unlock: () => AudioPack.unlock("unlock"), enabled: () => AudioPack.soundOn(), v10AudioPack: AudioPack };
+  }
+  window.EMXAudioPack = AudioPack;
+
+  function v10LoadMeta() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(V10_META_KEY) || "{}");
+      return {
+        tickets: Number(saved.tickets || 0),
+        arcadeLevel: Number(saved.arcadeLevel || 1),
+        arcadeXp: Number(saved.arcadeXp || 0),
+        totalGames: Number(saved.totalGames || 0),
+        reactionBest: saved.reactionBest || null,
+        reactionWins: Number(saved.reactionWins || 0),
+        memoryWins: Number(saved.memoryWins || 0),
+        wheelSpins: Number(saved.wheelSpins || 0),
+        riddleWins: Number(saved.riddleWins || 0),
+        bossBlocks: Number(saved.bossBlocks || 0),
+        lastReward: saved.lastReward || "No arcade rewards yet",
+        badges: saved.badges || {},
+        dailyArcadeDate: saved.dailyArcadeDate || ""
+      };
+    } catch (error) {
+      return { tickets: 0, arcadeLevel: 1, arcadeXp: 0, totalGames: 0, reactionBest: null, reactionWins: 0, memoryWins: 0, wheelSpins: 0, riddleWins: 0, bossBlocks: 0, lastReward: "No arcade rewards yet", badges: {}, dailyArcadeDate: "" };
+    }
+  }
+
+  function v10SaveMeta() {
+    localStorage.setItem(V10_META_KEY, JSON.stringify(v10Meta));
+  }
+
+  function v10Today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function v10Toast(message) {
+    let toast = document.getElementById("v10Toast") || document.getElementById("v9Toast") || document.getElementById("v7Toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "v10Toast";
+      toast.className = "v7-toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(v10Toast._timer);
+    v10Toast._timer = setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+
+  function v10ReadJSON(key, fallback = {}) {
+    try { return JSON.parse(localStorage.getItem(key) || "null") || fallback; } catch (error) { return fallback; }
+  }
+
+  function v10WriteJSON(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function v10AddCollectionCrystals(amount, source = "Arcade") {
+    const meta = v10ReadJSON(V10_COLLECTION_KEY, {});
+    meta.crystals = Number(meta.crystals || 0) + amount;
+    meta.lastReward = `${source}: +${amount} crystals`;
+    if (!meta.stats) meta.stats = {};
+    meta.stats.arcadeRewards = Number(meta.stats.arcadeRewards || 0) + amount;
+    v10WriteJSON(V10_COLLECTION_KEY, meta);
+  }
+
+  function v10AddHQCrystals(amount) {
+    const meta = v10ReadJSON(V10_HQ_KEY, {});
+    meta.crystals = Number(meta.crystals || 0) + amount;
+    meta.lifetimeCrystals = Number(meta.lifetimeCrystals || 0) + amount;
+    v10WriteJSON(V10_HQ_KEY, meta);
+  }
+
+  function v10AddChest(type = "neon", amount = 1) {
+    const meta = v10ReadJSON(V10_COLLECTION_KEY, {});
+    meta.chests = { neon: 0, boss: 0, skin: 0, pet: 0, legend: 0, mythic: 0, ...(meta.chests || {}) };
+    meta.chests[type] = Number(meta.chests[type] || 0) + amount;
+    meta.lastReward = `Arcade reward: +${amount} ${type} chest`;
+    v10WriteJSON(V10_COLLECTION_KEY, meta);
+  }
+
+  function v10Award({ tickets = 0, crystals = 0, coins = 0, chest = null, xp = 8, reason = "Arcade reward" }) {
+    v10Meta.tickets += tickets;
+    v10Meta.arcadeXp += xp;
+    v10Meta.totalGames += 1;
+    while (v10Meta.arcadeXp >= 100) {
+      v10Meta.arcadeXp -= 100;
+      v10Meta.arcadeLevel += 1;
+      tickets += 5;
+      v10Meta.tickets += 5;
+      chest = chest || "neon";
+    }
+    if (crystals > 0) {
+      v10AddCollectionCrystals(crystals, reason);
+      v10AddHQCrystals(Math.max(1, Math.floor(crystals / 2)));
+    }
+    if (chest) v10AddChest(chest, 1);
+    if (coins > 0 && typeof state === "object" && state) {
+      state.coins = Number(state.coins || 0) + coins;
+      if (typeof addLog === "function") addLog(`${reason}: +${coins} coins.`);
+      if (typeof saveGame === "function") saveGame();
+      if (typeof render === "function") render();
+    }
+    const parts = [];
+    if (tickets) parts.push(`🎟️ +${tickets}`);
+    if (crystals) parts.push(`💎 +${crystals}`);
+    if (coins) parts.push(`🪙 +${coins}`);
+    if (chest) parts.push(`🎁 ${chest} chest`);
+    v10Meta.lastReward = `${reason}: ${parts.join(" • ") || "+XP"}`;
+    v10SaveMeta();
+    AudioPack.play(chest ? "chest" : crystals || coins ? "coin" : "upgrade");
+    v10Toast(v10Meta.lastReward);
+    v10RenderPanel();
+    v10RenderArcade();
+  }
+
+  function v10InstallUI() {
+    document.title = "EMX Soul Arena - Audio + Arcade";
+    const versionChip = document.querySelector(".version-chip");
+    if (versionChip) versionChip.textContent = V10_UPDATE_NAME;
+
+    const start = $("startScreen");
+    if (start && !$("v10FunPanel")) {
+      const panel = document.createElement("section");
+      panel.id = "v10FunPanel";
+      panel.className = "v10-fun-panel";
+      const anchor = $("v9StartPanel") || $("v8StartPanel") || $("v7StartPanel") || start.querySelector(".section-heading");
+      if (anchor) anchor.insertAdjacentElement("afterend", panel);
+      else start.insertBefore(panel, start.firstChild);
+    }
+
+    const footer = document.querySelector(".footer-actions");
+    if (footer && !$("v10BattleDock")) {
+      const dock = document.createElement("section");
+      dock.id = "v10BattleDock";
+      dock.className = "v7-battle-dock v10-battle-dock";
+      dock.innerHTML = `
+        <button data-v10-action="audio">🔊 Audio Fix</button>
+        <button data-v10-action="arcade">🎡 Arcade</button>
+        <button data-v10-action="wheel">🎁 Spin</button>
+        <button data-v10-action="reaction">⚡ Reflex</button>
+      `;
+      const after = $("v9BattleDock") || $("v8BattleDock") || footer;
+      after.insertAdjacentElement("afterend", dock);
+    }
+
+    if (!$("v10AudioOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v10AudioOverlay" class="overlay hidden">
+          <div class="modal v10-modal-wide v10-audio-card">
+            <div class="modal-header-row">
+              <div>
+                <p class="eyebrow">V10 Audio Pack</p>
+                <h2>Sound Fix Center</h2>
+              </div>
+              <button class="close-btn" data-v10-action="close">✕</button>
+            </div>
+            <p class="v10-mini-text">This version uses real WAV sound files plus the old browser synth as backup. Tap unlock first, then test each button.</p>
+            <div class="v10-audio-status" id="v10AudioStatus">Checking audio...</div>
+            <div class="v10-control-row">
+              <button class="v10-primary" data-v10-action="unlockAudio">🔊 Unlock Audio Pack</button>
+              <button class="v10-ghost" data-v10-action="resetAudio">Reset Sound Settings</button>
+            </div>
+            <div class="v10-control-row v10-volume-row">
+              <label for="v10Volume">Volume</label>
+              <input id="v10Volume" type="range" min="0" max="1" step="0.05" value="${AudioPack.volume()}" />
+            </div>
+            <div class="v10-sfx-grid">
+              ${Object.keys(SFX_FILES).filter(k => ["tap","fire","lightning","ice","poison","shadow","heal","shield","meteor","victory","chest","boss"].includes(k)).map((key) => `<button data-v10-sfx="${key}">${v10SfxIcon(key)} ${v10Label(key)}</button>`).join("")}
+            </div>
+            <div class="v10-checklist">
+              <strong>If you still hear nothing:</strong>
+              <span>1. Turn iPhone silent/ring switch off and raise media volume.</span>
+              <span>2. Test in Safari or the Home Screen app, not SPCK preview.</span>
+              <span>3. Open <code>/assets/sfx/fire.wav</code> on your live link. If it downloads or plays, files are deployed.</span>
+            </div>
+          </div>
+        </section>
+      `);
+    }
+
+    if (!$("v10ArcadeOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v10ArcadeOverlay" class="overlay hidden">
+          <div class="modal v10-modal-wide v10-arcade-card">
+            <div class="modal-header-row">
+              <div>
+                <p class="eyebrow">Fun Arcade</p>
+                <h2>Mini-Games + Rewards</h2>
+              </div>
+              <button class="close-btn" data-v10-action="close">✕</button>
+            </div>
+            <div id="v10ArcadeBody"></div>
+          </div>
+        </section>
+      `);
+    }
+
+    AudioPack.preload();
+    v10RenderPanel();
+    v10RenderAudioStatus();
+  }
+
+  function v10SfxIcon(key) {
+    return ({ tap: "👆", fire: "🔥", lightning: "⚡", ice: "❄️", poison: "☠️", shadow: "🌑", heal: "✨", shield: "🛡️", meteor: "☄️", victory: "🏆", chest: "🎁", boss: "👑" })[key] || "🔊";
+  }
+
+  function v10Label(key) {
+    return key.replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  function v10RenderPanel() {
+    const panel = $("v10FunPanel");
+    if (!panel) return;
+    const badges = Object.keys(v10Meta.badges || {}).length;
+    panel.innerHTML = `
+      <div class="v10-panel-head">
+        <div>
+          <p class="eyebrow">V10 Upgrade</p>
+          <h3>Audio Pack + Fun Arcade</h3>
+        </div>
+        <span class="v10-pill">Lv ${v10Meta.arcadeLevel}</span>
+      </div>
+      <p class="v10-mini-text">Real audio files, reflex games, memory cards, reward wheel, riddles, badges, and kid-friendly rewards.</p>
+      <div class="v10-stats-row">
+        <span>🎟️ ${v10Meta.tickets}</span>
+        <span>XP ${v10Meta.arcadeXp}/100</span>
+        <span>🏅 ${badges}</span>
+        <span>${AudioPack.soundOn() ? "🔊" : "🔇"}</span>
+      </div>
+      <div class="v10-button-grid">
+        <button class="v10-primary" data-v10-action="audio">🔊 Sound Fix</button>
+        <button class="v10-ghost" data-v10-action="arcade">🎡 Fun Arcade</button>
+        <button class="v10-ghost" data-v10-action="reaction">⚡ Reflex Tap</button>
+        <button class="v10-ghost" data-v10-action="wheel">🎁 Reward Spin</button>
+      </div>
+      <small class="v10-last-reward">${v10Escape(v10Meta.lastReward)}</small>
+    `;
+  }
+
+  function v10RenderAudioStatus() {
+    const el = $("v10AudioStatus");
+    if (!el) return;
+    const contextState = oldSound?.ctx?.state || "no synth ctx";
+    el.innerHTML = `
+      <strong>${AudioPack.soundOn() ? "🔊 Sound On" : "🔇 Muted"}</strong>
+      <span>Pack: ${AudioPack.unlocked ? "Ready" : "Needs unlock"}</span>
+      <span>Last: ${v10Escape(AudioPack.lastResult)}</span>
+      <span>Volume: ${Math.round(AudioPack.volume() * 100)}%</span>
+      <span>Synth backup: ${v10Escape(contextState)}</span>
+    `;
+  }
+
+  function v10RenderArcade(mode = "home") {
+    const body = $("v10ArcadeBody");
+    if (!body) return;
+    if (mode === "reaction") return v10RenderReaction();
+    if (mode === "memory") return v10RenderMemory();
+    if (mode === "riddle") return v10RenderRiddle();
+    if (mode === "bossBlock") return v10RenderBossBlock();
+    const dailyReady = v10Meta.dailyArcadeDate !== v10Today();
+    body.innerHTML = `
+      <div class="v10-arcade-hero">
+        <div><strong>🎟️ ${v10Meta.tickets}</strong><small>Arcade tickets</small></div>
+        <div><strong>Lv ${v10Meta.arcadeLevel}</strong><small>${v10Meta.arcadeXp}/100 XP</small></div>
+        <div><strong>${v10Meta.totalGames}</strong><small>Games played</small></div>
+      </div>
+      <div class="v10-arcade-grid">
+        <button data-v10-action="reaction" class="v10-game-card"><strong>⚡ Reflex Tap</strong><span>Wait for GO and tap fast.</span></button>
+        <button data-v10-action="memory" class="v10-game-card"><strong>🧠 Memory Match</strong><span>Flip cards and match powers.</span></button>
+        <button data-v10-action="wheel" class="v10-game-card hot"><strong>🎁 Reward Wheel</strong><span>Spin for tickets, crystals, coins, or chests.</span></button>
+        <button data-v10-action="riddle" class="v10-game-card"><strong>🚪 Riddle Gate</strong><span>Answer easy RPG questions.</span></button>
+        <button data-v10-action="bossBlock" class="v10-game-card"><strong>🛡️ Boss Block Trainer</strong><span>Practice blocking boss attacks.</span></button>
+        <button data-v10-action="dailyArcade" class="v10-game-card ${dailyReady ? "hot" : ""}"><strong>🌟 Daily Arcade Bonus</strong><span>${dailyReady ? "Claim today’s tickets." : "Already claimed today."}</span></button>
+      </div>
+      <div class="v10-prize-wall">
+        <h3>Prize Wall</h3>
+        <button data-v10-prize="coins">25 🎟️ → +80 run coins</button>
+        <button data-v10-prize="crystals">35 🎟️ → +25 crystals</button>
+        <button data-v10-prize="neon">55 🎟️ → Neon chest</button>
+        <button data-v10-prize="pet">75 🎟️ → Pet chest</button>
+      </div>
+      <p class="v10-mini-text">Last reward: ${v10Escape(v10Meta.lastReward)}</p>
+    `;
+  }
+
+  function v10OpenOverlay(id) {
+    ["v10AudioOverlay", "v10ArcadeOverlay"].forEach((name) => $(name)?.classList.add("hidden"));
+    $(id)?.classList.remove("hidden");
+    if (id === "v10AudioOverlay") v10RenderAudioStatus();
+    if (id === "v10ArcadeOverlay") v10RenderArcade();
+  }
+
+  function v10Close() {
+    ["v10AudioOverlay", "v10ArcadeOverlay"].forEach((name) => $(name)?.classList.add("hidden"));
+  }
+
+  function v10StartReaction() {
+    clearTimeout(reactionTimer);
+    reactionReady = false;
+    reactionStartAt = 0;
+    v10RenderReaction("Wait for green...");
+    const delay = rand(900, 2500);
+    reactionTimer = setTimeout(() => {
+      reactionReady = true;
+      reactionStartAt = performance.now();
+      v10RenderReaction("GO! TAP NOW!", true);
+      AudioPack.play("unlock");
+    }, delay);
+  }
+
+  function v10RenderReaction(message = "Tap start, then wait for GO.", go = false) {
+    const body = $("v10ArcadeBody");
+    if (!body) return;
+    body.innerHTML = `
+      <button class="v10-back" data-v10-action="arcadeHome">← Arcade Home</button>
+      <div id="v10ReactionPad" class="v10-reaction-pad ${go ? "go" : ""}" data-v10-action="reactionTap">
+        <strong>${message}</strong>
+        <span>Best: ${v10Meta.reactionBest ? `${v10Meta.reactionBest}ms` : "None yet"}</span>
+      </div>
+      <button class="v10-primary" data-v10-action="startReaction">Start Reflex Test</button>
+    `;
+  }
+
+  function v10ReactionTap() {
+    if (!reactionTimer && !reactionReady) return v10StartReaction();
+    if (!reactionReady) {
+      clearTimeout(reactionTimer);
+      reactionTimer = null;
+      AudioPack.play("wrong");
+      v10RenderReaction("Too early! Wait for GO.");
+      v10Award({ tickets: 1, crystals: 0, xp: 2, reason: "Reflex practice" });
+      return;
+    }
+    const ms = Math.max(1, Math.round(performance.now() - reactionStartAt));
+    reactionReady = false;
+    reactionTimer = null;
+    if (!v10Meta.reactionBest || ms < v10Meta.reactionBest) v10Meta.reactionBest = ms;
+    v10Meta.reactionWins += 1;
+    const reward = REACTION_REWARDS.find((r) => ms <= r.max) || REACTION_REWARDS[REACTION_REWARDS.length - 1];
+    v10MaybeBadge("reflex", v10Meta.reactionWins >= 5, "⚡ Reflex Rookie");
+    v10Award({ tickets: reward.tickets, crystals: reward.crystals, xp: 12, reason: `Reflex ${reward.label} (${ms}ms)` });
+    v10RenderReaction(`${reward.label}! ${ms}ms`);
+  }
+
+  function v10ResetMemory() {
+    const icons = ["🔥", "⚡", "❄️", "☠️", "🌑", "✨"];
+    const selected = icons.sort(() => Math.random() - 0.5).slice(0, 4);
+    memoryCards = [...selected, ...selected].sort(() => Math.random() - 0.5).map((icon, index) => ({ id: index, icon, flipped: false, matched: false }));
+    flippedCards = [];
+    matchedCards = 0;
+    v10RenderMemory();
+  }
+
+  function v10RenderMemory() {
+    if (!memoryCards.length) v10ResetMemory();
+    const body = $("v10ArcadeBody");
+    if (!body) return;
+    body.innerHTML = `
+      <button class="v10-back" data-v10-action="arcadeHome">← Arcade Home</button>
+      <div class="v10-memory-head"><strong>🧠 Memory Match</strong><span>Matches: ${matchedCards}/4</span></div>
+      <div class="v10-memory-grid">
+        ${memoryCards.map((card) => `<button class="v10-memory-card ${card.flipped || card.matched ? "flipped" : ""}" data-v10-memory="${card.id}">${card.flipped || card.matched ? card.icon : "?"}</button>`).join("")}
+      </div>
+      <button class="v10-ghost" data-v10-action="memoryNew">New Board</button>
+    `;
+  }
+
+  function v10FlipMemory(id) {
+    const card = memoryCards.find((item) => item.id === id);
+    if (!card || card.flipped || card.matched || flippedCards.length >= 2) return;
+    card.flipped = true;
+    flippedCards.push(card);
+    AudioPack.play("memory");
+    v10RenderMemory();
+    if (flippedCards.length === 2) {
+      setTimeout(() => {
+        const [a, b] = flippedCards;
+        if (a.icon === b.icon) {
+          a.matched = true;
+          b.matched = true;
+          matchedCards += 1;
+          AudioPack.play("upgrade");
+          if (matchedCards >= 4) {
+            v10Meta.memoryWins += 1;
+            v10MaybeBadge("memory", v10Meta.memoryWins >= 3, "🧠 Memory Master");
+            v10Award({ tickets: 12, crystals: 8, xp: 18, reason: "Memory board cleared" });
+            memoryCards = [];
+          }
+        } else {
+          a.flipped = false;
+          b.flipped = false;
+          AudioPack.play("wrong");
+        }
+        flippedCards = [];
+        v10RenderMemory();
+      }, 650);
+    }
+  }
+
+  function v10SpinWheel() {
+    v10Meta.wheelSpins += 1;
+    AudioPack.play("spin");
+    const prizes = [
+      { label: "+8 tickets", tickets: 8, xp: 8 },
+      { label: "+15 crystals", crystals: 15, tickets: 3, xp: 10 },
+      { label: "+60 run coins", coins: 60, tickets: 2, xp: 8 },
+      { label: "Neon chest", chest: "neon", tickets: 4, xp: 15 },
+      { label: "+25 tickets", tickets: 25, xp: 16 },
+      { label: "Pet chest", chest: "pet", tickets: 5, xp: 18 }
+    ];
+    const prize = choice(prizes);
+    v10MaybeBadge("spinner", v10Meta.wheelSpins >= 10, "🎡 Spin Champ");
+    v10Award({ ...prize, reason: `Reward Wheel: ${prize.label}` });
+    v10OpenOverlay("v10ArcadeOverlay");
+  }
+
+  function v10RenderRiddle() {
+    const body = $("v10ArcadeBody");
+    if (!body) return;
+    const riddle = choice(RIDDLES);
+    body.dataset.riddleAnswer = String(riddle.answer);
+    body.innerHTML = `
+      <button class="v10-back" data-v10-action="arcadeHome">← Arcade Home</button>
+      <div class="v10-riddle-card">
+        <strong>🚪 Riddle Gate</strong>
+        <p>${v10Escape(riddle.q)}</p>
+        <div class="v10-riddle-options">
+          ${riddle.choices.map((c, i) => `<button data-v10-riddle-choice="${i}">${v10Escape(c)}</button>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function v10RiddleChoice(index) {
+    const body = $("v10ArcadeBody");
+    const answer = Number(body?.dataset.riddleAnswer || 0);
+    if (index === answer) {
+      v10Meta.riddleWins += 1;
+      v10MaybeBadge("riddles", v10Meta.riddleWins >= 5, "🚪 Riddle Runner");
+      AudioPack.play("riddle");
+      v10Award({ tickets: 9, crystals: 5, xp: 12, reason: "Riddle Gate cleared" });
+      v10RenderRiddle();
+    } else {
+      AudioPack.play("wrong");
+      v10Award({ tickets: 1, xp: 2, reason: "Riddle practice" });
+    }
+  }
+
+  function v10RenderBossBlock(text = "Tap Start. Block when the boss flashes red.", danger = false) {
+    const body = $("v10ArcadeBody");
+    if (!body) return;
+    body.innerHTML = `
+      <button class="v10-back" data-v10-action="arcadeHome">← Arcade Home</button>
+      <div id="v10BossTrainer" class="v10-boss-trainer ${danger ? "danger" : ""}" data-v10-action="bossBlockTap">
+        <div class="v10-boss-face">👑</div>
+        <strong>${v10Escape(text)}</strong>
+        <span>Blocks: ${v10Meta.bossBlocks}</span>
+      </div>
+      <button class="v10-primary" data-v10-action="startBossBlock">Start Boss Block</button>
+    `;
+  }
+
+  function v10StartBossBlock() {
+    clearTimeout(reactionTimer);
+    reactionReady = false;
+    v10RenderBossBlock("Boss is charging...", false);
+    reactionTimer = setTimeout(() => {
+      reactionReady = true;
+      reactionStartAt = performance.now();
+      AudioPack.play("boss");
+      v10RenderBossBlock("BLOCK NOW!", true);
+    }, rand(900, 2200));
+  }
+
+  function v10BossBlockTap() {
+    if (!reactionTimer && !reactionReady) return v10StartBossBlock();
+    if (!reactionReady) {
+      AudioPack.play("wrong");
+      clearTimeout(reactionTimer);
+      reactionTimer = null;
+      v10RenderBossBlock("Too early. Wait for the red flash.", false);
+      return;
+    }
+    const ms = Math.round(performance.now() - reactionStartAt);
+    reactionReady = false;
+    reactionTimer = null;
+    v10Meta.bossBlocks += 1;
+    v10MaybeBadge("bossBlock", v10Meta.bossBlocks >= 5, "🛡️ Boss Blocker");
+    v10Award({ tickets: ms < 450 ? 11 : 7, crystals: ms < 450 ? 7 : 3, xp: 14, reason: `Boss block ${ms}ms` });
+    v10RenderBossBlock(`Blocked in ${ms}ms!`, false);
+  }
+
+  function v10ClaimDailyArcade() {
+    if (v10Meta.dailyArcadeDate === v10Today()) {
+      v10Toast("Daily Arcade Bonus already claimed today.");
+      AudioPack.play("wrong");
+      return;
+    }
+    v10Meta.dailyArcadeDate = v10Today();
+    v10Award({ tickets: 20, crystals: 10, chest: "neon", xp: 20, reason: "Daily Arcade Bonus" });
+  }
+
+  function v10BuyPrize(type) {
+    const prizes = {
+      coins: { cost: 25, reward: { coins: 80, xp: 4, reason: "Prize Wall coins" } },
+      crystals: { cost: 35, reward: { crystals: 25, xp: 5, reason: "Prize Wall crystals" } },
+      neon: { cost: 55, reward: { chest: "neon", xp: 8, reason: "Prize Wall Neon Chest" } },
+      pet: { cost: 75, reward: { chest: "pet", xp: 10, reason: "Prize Wall Pet Chest" } }
+    };
+    const prize = prizes[type];
+    if (!prize) return;
+    if (v10Meta.tickets < prize.cost) {
+      v10Toast("Not enough tickets yet. Play mini-games to earn more.");
+      AudioPack.play("wrong");
+      return;
+    }
+    v10Meta.tickets -= prize.cost;
+    v10Award(prize.reward);
+  }
+
+  function v10MaybeBadge(id, condition, title) {
+    if (!condition || v10Meta.badges[id]) return;
+    v10Meta.badges[id] = { title, date: Date.now() };
+    AudioPack.play("sticker");
+    v10Toast(`Badge unlocked: ${title}`);
+  }
+
+  function v10Escape(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function v10WireEvents() {
+    if (v10WireEvents.wired) return;
+    v10WireEvents.wired = true;
+
+    document.addEventListener("pointerdown", () => { AudioPack.preload(); }, { passive: true });
+
+    document.addEventListener("click", async (event) => {
+      const actionEl = event.target.closest("[data-v10-action]");
+      const sfxEl = event.target.closest("[data-v10-sfx]");
+      const memoryEl = event.target.closest("[data-v10-memory]");
+      const riddleEl = event.target.closest("[data-v10-riddle-choice]");
+      const prizeEl = event.target.closest("[data-v10-prize]");
+
+      if (actionEl || sfxEl || memoryEl || riddleEl || prizeEl) AudioPack.play("tap");
+
+      if (sfxEl) {
+        await AudioPack.unlock(sfxEl.dataset.v10Sfx || "tap");
+        AudioPack.play(sfxEl.dataset.v10Sfx || "tap");
+      }
+
+      if (memoryEl) v10FlipMemory(Number(memoryEl.dataset.v10Memory));
+      if (riddleEl) v10RiddleChoice(Number(riddleEl.dataset.v10RiddleChoice));
+      if (prizeEl) v10BuyPrize(prizeEl.dataset.v10Prize);
+
+      if (!actionEl) return;
+      const action = actionEl.dataset.v10Action;
+      if (action === "audio") v10OpenOverlay("v10AudioOverlay");
+      if (action === "arcade") v10OpenOverlay("v10ArcadeOverlay");
+      if (action === "close") v10Close();
+      if (action === "unlockAudio") {
+        await AudioPack.unlock("unlock");
+        AudioPack.play("victory");
+        v10RenderAudioStatus();
+      }
+      if (action === "resetAudio") {
+        localStorage.setItem(V10_SOUND_KEY, "on");
+        localStorage.setItem(V10_VOLUME_KEY, "0.85");
+        await AudioPack.unlock("unlock");
+        v10Toast("Sound settings reset. Test again.");
+      }
+      if (action === "arcadeHome") v10RenderArcade("home");
+      if (action === "reaction") { v10OpenOverlay("v10ArcadeOverlay"); v10RenderReaction(); }
+      if (action === "startReaction") v10StartReaction();
+      if (action === "reactionTap") v10ReactionTap();
+      if (action === "memory") { v10OpenOverlay("v10ArcadeOverlay"); v10ResetMemory(); }
+      if (action === "memoryNew") v10ResetMemory();
+      if (action === "wheel") v10SpinWheel();
+      if (action === "riddle") { v10OpenOverlay("v10ArcadeOverlay"); v10RenderRiddle(); }
+      if (action === "bossBlock") { v10OpenOverlay("v10ArcadeOverlay"); v10RenderBossBlock(); }
+      if (action === "startBossBlock") v10StartBossBlock();
+      if (action === "bossBlockTap") v10BossBlockTap();
+      if (action === "dailyArcade") v10ClaimDailyArcade();
+    });
+
+    document.addEventListener("input", (event) => {
+      if (event.target && event.target.id === "v10Volume") {
+        localStorage.setItem(V10_VOLUME_KEY, String(clamp(Number(event.target.value) || 0, 0, 1)));
+        AudioPack.play("tap");
+        v10RenderAudioStatus();
+      }
+    });
+  }
+
+  function v10PatchRender() {
+    if (window.__emxV10Patched) return;
+    window.__emxV10Patched = true;
+    const oldRenderFn = typeof render === "function" ? render : null;
+    if (oldRenderFn) {
+      render = function v10RenderPatched() {
+        oldRenderFn();
+        const versionChip = document.querySelector(".version-chip");
+        if (versionChip) versionChip.textContent = V10_UPDATE_NAME;
+        v10InstallUI();
+        v10RenderPanel();
+        v10RenderAudioStatus();
+      };
+    }
+  }
+
+  v10InstallUI();
+  v10WireEvents();
+  v10PatchRender();
+  v10SaveMeta();
+
+  setTimeout(() => {
+    v10InstallUI();
+    v10RenderPanel();
+    v10RenderAudioStatus();
+    if (typeof render === "function" && state) render();
+  }, 350);
+})();
+
+/* =========================================================
+   EMX Soul Arena v11 — Guide + Adventure Update
+   Adds: interactive tutorial, next-goal helper, quest board,
+   power guide, boss warnings, adventure rooms, and gear forge.
+========================================================= */
+(() => {
+  const V11_UPDATE_NAME = "Guide + Adventure Update";
+  const V11_META_KEY = "emxSoulArenaGuideAdventure_v11";
+  const V11_HQ_KEY = "emxSoulArenaMeta_v4";
+  const V11_COLLECTION_KEY = "emxSoulArenaCollection_v1";
+  const V11_CAMPAIGN_KEY = "emxSoulArenaCampaign_v7";
+  const V11_ARCADE_KEY = "emxSoulArenaFunArcade_v10";
+
+  const V11_GEAR = {
+    trainingBlade: { slot: "weapon", rarity: "Common", icon: "⚔️", title: "Training Blade", desc: "+basic damage" },
+    patchedVest: { slot: "armor", rarity: "Common", icon: "🥋", title: "Patched Vest", desc: "+HP and shield" },
+    apprenticeCharm: { slot: "charm", rarity: "Common", icon: "🔰", title: "Apprentice Charm", desc: "+mana regen" },
+    glowleafCharm: { slot: "charm", rarity: "Rare", icon: "🌿", title: "Glowleaf Charm", desc: "+healing and nature power" },
+    marketBlade: { slot: "weapon", rarity: "Rare", icon: "🗡️", title: "Market Blade", desc: "+crit and basic damage" },
+    emberCalibrator: { slot: "weapon", rarity: "Rare", icon: "🔥", title: "Ember Calibrator", desc: "+fire damage" },
+    venomNeedle: { slot: "weapon", rarity: "Epic", icon: "☠️", title: "Venom Needle", desc: "+poison and crit" },
+    boneguardArmor: { slot: "armor", rarity: "Epic", icon: "🦴", title: "Boneguard Armor", desc: "+HP and boss resistance" },
+    stormCore: { slot: "core", rarity: "Epic", icon: "⚡", title: "Storm Core", desc: "+lightning and ultimate charge" },
+    neonAegis: { slot: "armor", rarity: "Legendary", icon: "🛡️", title: "Neon Aegis", desc: "+starting shield and resistance" },
+    bossbreakerCore: { slot: "core", rarity: "Legendary", icon: "🎯", title: "Bossbreaker Core", desc: "+boss damage" },
+    phoenixDrive: { slot: "core", rarity: "Legendary", icon: "🌅", title: "Phoenix Drive", desc: "+revive and healing" },
+    voidCrown: { slot: "charm", rarity: "Mythic", icon: "👑", title: "Void Crown", desc: "+campaign damage" },
+    emxOverdriveChip: { slot: "core", rarity: "Mythic", icon: "⚙️", title: "EMX Overdrive Chip", desc: "+overdrive and ultimates" }
+  };
+
+  const V11_TUTORIAL_STEPS = [
+    {
+      icon: "👋",
+      title: "Welcome to EMX Soul Arena",
+      body: "Your goal is simple: pick a class, beat enemies, collect upgrades, and use permanent gear to get stronger every run.",
+      task: "Tap Next to learn the battle screen."
+    },
+    {
+      icon: "❤️",
+      title: "Read Your Bars",
+      body: "HP keeps you alive. Mana pays for stronger powers. Ultimate fills when you attack or get hit, then unleashes your biggest move.",
+      task: "In battle, watch HP first, then mana, then ultimate."
+    },
+    {
+      icon: "🔥",
+      title: "Pick the Right Power",
+      body: "Basic attacks are free. Specials hit harder. Shield protects you. Heal saves runs. Locked powers open when you level up.",
+      task: "Open the Power Guide whenever you forget what a button does."
+    },
+    {
+      icon: "⚠️",
+      title: "Boss Warning System",
+      body: "When EMX Bot warns that a boss is charging, use Shield, Heal, Ultimate, or a stun/freeze/root power before the boss attacks.",
+      task: "React to warning banners to take less damage."
+    },
+    {
+      icon: "🎁",
+      title: "Rewards Matter",
+      body: "After wins, choose upgrades. Open chests for gear. Spend skill points in the Skill Tree. Use the Forge to power up equipped gear.",
+      task: "Check Next Goal when you are not sure what to do."
+    },
+    {
+      icon: "🗺️",
+      title: "Campaign + Adventure Rooms",
+      body: "Campaign zones now include surprise adventure rooms: treasure, healing, puzzles, training, and risk rewards.",
+      task: "Choose carefully — some rooms can save your run."
+    }
+  ];
+
+  const V11_QUESTS = [
+    { id: "tutorial", icon: "🎓", title: "Finish Tutorial", desc: "Complete the starter guide.", type: "tutorial", goal: 1, reward: { crystals: 30, tickets: 15, chest: "neon" } },
+    { id: "goals", icon: "🎯", title: "Ask EMX Bot", desc: "Use Next Goal 3 times.", type: "goalViews", goal: 3, reward: { crystals: 20, coins: 60 } },
+    { id: "powerGuide", icon: "📘", title: "Read Power Guide", desc: "Open the power guide once.", type: "powerGuideViews", goal: 1, reward: { crystals: 15, tickets: 10 } },
+    { id: "firstWins", icon: "⚔️", title: "Win 5 Battles", desc: "Defeat 5 enemies in any mode.", type: "defeats", goal: 5, reward: { crystals: 40, chest: "neon" } },
+    { id: "shieldDrill", icon: "🛡️", title: "Shield Practice", desc: "Use guard or shield powers 3 times.", type: "guardUses", goal: 3, reward: { crystals: 20, coins: 80 } },
+    { id: "healDrill", icon: "✨", title: "Healing Practice", desc: "Use heal powers 3 times.", type: "healUses", goal: 3, reward: { crystals: 20, chest: "neon" } },
+    { id: "bossWarnings", icon: "⚠️", title: "Boss Counter", desc: "Answer 1 boss warning with shield/heal/ultimate/stun power.", type: "bossWarnings", goal: 1, reward: { crystals: 50, chest: "boss" } },
+    { id: "adventureRooms", icon: "🚪", title: "Explorer", desc: "Clear 2 adventure rooms.", type: "adventureRooms", goal: 2, reward: { crystals: 35, skillPoints: 1 } },
+    { id: "forge", icon: "🔧", title: "Use the Forge", desc: "Upgrade any piece of gear once.", type: "forgeUpgrades", goal: 1, reward: { crystals: 25, chest: "neon" } },
+    { id: "quests", icon: "📋", title: "Quest Hunter", desc: "Claim 3 Guide quests.", type: "questsClaimed", goal: 3, reward: { crystals: 70, chest: "legend", skillPoints: 1 } }
+  ];
+
+  const V11_TIPS = [
+    "Use Shield before boss warnings. It can turn a knockout into an easy win.",
+    "If you are stuck, open Next Goal. It tells you the clearest next step.",
+    "Gear Forge upgrades apply to your next run, not the current one.",
+    "Adventure rooms can heal you before a hard fight. Pick the option your run needs.",
+    "Locked powers open at higher levels. Check Power Guide to see what is coming.",
+    "Kid Mode makes enemies softer and gives bonus shield. It is great for younger players.",
+    "Use the Arcade and Quest Board when you want rewards without a full run."
+  ];
+
+  const V11_ADVENTURES = [
+    {
+      id: "fountain",
+      icon: "⛲",
+      title: "Healing Fountain",
+      prompt: "A neon fountain hums before the next fight. Choose one blessing.",
+      choices: [
+        { id: "fountain-heal", icon: "❤️", title: "Restore HP", desc: "Heal 35% of max HP." },
+        { id: "fountain-mana", icon: "💧", title: "Refill Mana", desc: "Gain 35 mana." },
+        { id: "fountain-shield", icon: "🛡️", title: "Barrier", desc: "Start next fight with +45 shield." }
+      ]
+    },
+    {
+      id: "treasure",
+      icon: "🎁",
+      title: "Treasure Vault",
+      prompt: "Three vault doors glow. Pick the reward you want most.",
+      choices: [
+        { id: "treasure-coins", icon: "🪙", title: "Coin Cache", desc: "+90 run coins." },
+        { id: "treasure-crystals", icon: "💎", title: "Crystal Cache", desc: "+25 EMX crystals." },
+        { id: "treasure-chest", icon: "🎁", title: "Neon Chest", desc: "Adds a Neon Chest." }
+      ]
+    },
+    {
+      id: "puzzle",
+      icon: "🚪",
+      title: "Puzzle Gate",
+      prompt: "A gate asks: Which move is best when a boss is charging a big attack?",
+      choices: [
+        { id: "puzzle-correct", icon: "🛡️", title: "Use Shield", desc: "Correct: gain shield and crystals." },
+        { id: "puzzle-wrong1", icon: "🏃", title: "Run in Circles", desc: "Funny, but not useful." },
+        { id: "puzzle-wrong2", icon: "😴", title: "Take a Nap", desc: "The boss will not wait." }
+      ]
+    },
+    {
+      id: "dojo",
+      icon: "🥋",
+      title: "Training Room",
+      prompt: "A hologram trainer offers a quick power drill before the next fight.",
+      choices: [
+        { id: "dojo-damage", icon: "⚔️", title: "Attack Drill", desc: "+10 basic and special damage this run." },
+        { id: "dojo-ult", icon: "⚡", title: "Ultimate Drill", desc: "+35 ultimate charge now." },
+        { id: "dojo-combo", icon: "🔥", title: "Combo Drill", desc: "Start the next fight with combo energy." }
+      ]
+    },
+    {
+      id: "risk",
+      icon: "🧪",
+      title: "Risk Lab",
+      prompt: "The lab offers dangerous upgrades. Higher risk, better reward.",
+      choices: [
+        { id: "risk-small", icon: "💊", title: "Safe Sample", desc: "+15 crystals." },
+        { id: "risk-medium", icon: "🧪", title: "Power Sample", desc: "Lose 10 HP, gain damage and coins." },
+        { id: "risk-big", icon: "🌋", title: "Overload Sample", desc: "Lose 20 HP, gain a boss chest." }
+      ]
+    }
+  ];
+
+  let v11Meta = v11LoadMeta();
+  let v11SelectedClass = "flame";
+  let v11AdventureResume = null;
+
+  function v11DefaultMeta() {
+    return {
+      tutorialDone: false,
+      tutorialStep: 0,
+      goalViews: 0,
+      powerGuideViews: 0,
+      adventureRooms: 0,
+      forgeUpgrades: 0,
+      bossWarnings: 0,
+      questsClaimed: 0,
+      questProgress: {},
+      questClaims: {},
+      forgeLevels: {},
+      tipsSeen: 0,
+      lastGoal: "Open Next Goal to get instructions.",
+      lastAdventure: "No adventure room cleared yet."
+    };
+  }
+
+  function v11LoadMeta() {
+    try {
+      return { ...v11DefaultMeta(), ...(JSON.parse(localStorage.getItem(V11_META_KEY) || "{}") || {}) };
+    } catch (error) {
+      return v11DefaultMeta();
+    }
+  }
+
+  function v11SaveMeta() {
+    localStorage.setItem(V11_META_KEY, JSON.stringify(v11Meta));
+  }
+
+  function v11Read(key, fallback = {}) {
+    try { return JSON.parse(localStorage.getItem(key) || "null") || fallback; } catch (error) { return fallback; }
+  }
+
+  function v11Write(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function v11Today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function v11Escape(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function v11Toast(message) {
+    let toast = document.getElementById("v11Toast") || document.getElementById("v10Toast") || document.getElementById("v9Toast") || document.getElementById("v7Toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "v11Toast";
+      toast.className = "v7-toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(v11Toast._timer);
+    v11Toast._timer = setTimeout(() => toast.classList.remove("show"), 2800);
+  }
+
+  function v11Play(type = "tap") {
+    try {
+      if (window.EMXAudioPack?.play) window.EMXAudioPack.play(type);
+      else if (window.EMXSound?.play) window.EMXSound.play(type);
+    } catch (error) {}
+  }
+
+  function v11Track(type, amount = 1) {
+    v11Meta.questProgress[type] = Number(v11Meta.questProgress[type] || 0) + amount;
+    if (type in v11Meta) v11Meta[type] = Number(v11Meta[type] || 0) + amount;
+    v11SaveMeta();
+    v11RenderPanel();
+    v11RenderQuestBoard();
+  }
+
+  function v11GetQuestProgress(quest) {
+    if (quest.type === "tutorial") return v11Meta.tutorialDone ? 1 : 0;
+    return Number(v11Meta.questProgress[quest.type] || v11Meta[quest.type] || 0);
+  }
+
+  function v11RewardText(reward = {}) {
+    const parts = [];
+    if (reward.crystals) parts.push(`💎 ${reward.crystals}`);
+    if (reward.tickets) parts.push(`🎟️ ${reward.tickets}`);
+    if (reward.coins) parts.push(`🪙 ${reward.coins}`);
+    if (reward.chest) parts.push(`🎁 ${reward.chest}`);
+    if (reward.skillPoints) parts.push(`🌲 ${reward.skillPoints} Skill Pt`);
+    return parts.join(" • ") || "Reward";
+  }
+
+  function v11Award(reward = {}, source = "Guide reward") {
+    if (reward.crystals) {
+      const hq = v11Read(V11_HQ_KEY, {});
+      hq.crystals = Number(hq.crystals || 0) + reward.crystals;
+      hq.lifetimeCrystals = Number(hq.lifetimeCrystals || 0) + reward.crystals;
+      v11Write(V11_HQ_KEY, hq);
+      const collection = v11Read(V11_COLLECTION_KEY, {});
+      collection.crystals = Number(collection.crystals || 0) + reward.crystals;
+      collection.lastReward = `${source}: +${reward.crystals} crystals`;
+      v11Write(V11_COLLECTION_KEY, collection);
+    }
+    if (reward.tickets) {
+      const arcade = v11Read(V11_ARCADE_KEY, {});
+      arcade.tickets = Number(arcade.tickets || 0) + reward.tickets;
+      arcade.lastReward = `${source}: +${reward.tickets} tickets`;
+      v11Write(V11_ARCADE_KEY, arcade);
+    }
+    if (reward.chest) {
+      const collection = v11Read(V11_COLLECTION_KEY, {});
+      collection.chests = { neon: 0, boss: 0, skin: 0, pet: 0, legend: 0, mythic: 0, ...(collection.chests || {}) };
+      collection.chests[reward.chest] = Number(collection.chests[reward.chest] || 0) + 1;
+      collection.lastReward = `${source}: +1 ${reward.chest} chest`;
+      v11Write(V11_COLLECTION_KEY, collection);
+      const campaign = v11Read(V11_CAMPAIGN_KEY, {});
+      campaign.chests = Array.isArray(campaign.chests) ? campaign.chests : [];
+      campaign.chests.push({ type: reward.chest, addedAt: Date.now(), source });
+      v11Write(V11_CAMPAIGN_KEY, campaign);
+    }
+    if (reward.skillPoints) {
+      const campaign = v11Read(V11_CAMPAIGN_KEY, {});
+      campaign.skillPoints = Number(campaign.skillPoints || 0) + reward.skillPoints;
+      v11Write(V11_CAMPAIGN_KEY, campaign);
+    }
+    if (reward.coins && state) {
+      state.coins = Number(state.coins || 0) + reward.coins;
+      if (typeof addLog === "function") addLog(`${source}: +${reward.coins} coins.`);
+      if (typeof saveGame === "function") saveGame();
+    }
+    v11Toast(`${source}: ${v11RewardText(reward)}`);
+    v11Play(reward.chest ? "chest" : "coin");
+    if (typeof render === "function" && state) render();
+    v11RenderPanel();
+  }
+
+  function v11CampaignMeta() {
+    const raw = v11Read(V11_CAMPAIGN_KEY, {});
+    raw.inventory = Array.isArray(raw.inventory) ? raw.inventory : [];
+    raw.equipped = raw.equipped || {};
+    raw.chests = Array.isArray(raw.chests) ? raw.chests : [];
+    return raw;
+  }
+
+  function v11NextGoal() {
+    const campaign = v11CampaignMeta();
+    const collection = v11Read(V11_COLLECTION_KEY, {});
+    const chests = collection.chests || {};
+    const hasCollectionChest = Object.values(chests).some((value) => Number(value || 0) > 0);
+
+    if (!v11Meta.tutorialDone) return { icon: "🎓", title: "Complete the starter tutorial", detail: "It teaches HP, mana, powers, bosses, gear, and rewards.", action: "tutorial" };
+    if (campaign.skillPoints > 0) return { icon: "🌲", title: `Spend ${campaign.skillPoints} skill point${campaign.skillPoints > 1 ? "s" : ""}`, detail: "Open Skill Tree and buy permanent upgrades.", action: "skills" };
+    if ((campaign.chests || []).length > 0 || hasCollectionChest) return { icon: "🎁", title: "Open your waiting chests", detail: "Chests can unlock gear, crystals, pets, skins, and skill points.", action: "chests" };
+    if (state?.phase === "player") return { icon: "⚔️", title: "Win the current fight", detail: "Use free attacks when low on mana. Use Shield before boss warnings.", action: "powers" };
+    if (state?.phase === "upgrade") return { icon: "🃏", title: "Choose an upgrade card", detail: "Pick damage if you are winning, healing/shield if you are barely surviving.", action: "none" };
+    if (state?.enemy?.isBoss || state?.enemy?.isMiniBoss) return { icon: "👑", title: "Beat the boss", detail: "Wait for the warning, then Shield, Heal, Stun, Freeze, Root, or Ultimate.", action: "powers" };
+    if (campaign.activeZone && campaign.activeZone !== "endless") return { icon: "🗺️", title: "Clear your active campaign zone", detail: "Finish all battles in the zone to unlock gear, chests, and the next area.", action: "map" };
+    if ((campaign.inventory || []).length > 0) return { icon: "🔧", title: "Upgrade equipped gear in the Forge", detail: "Forge levels add extra stats on your next run.", action: "forge" };
+    return { icon: "📋", title: "Finish Guide Quests", detail: "Quest rewards give crystals, chests, coins, tickets, and skill points.", action: "quests" };
+  }
+
+  function v11Tip() {
+    const goal = v11NextGoal();
+    if (state?.v11BossThreat?.active) return "⚠️ Boss warning active: use Shield, Heal, Ultimate, Stun, Freeze, or Root before the boss attacks.";
+    if (state?.phase === "player" && state.player?.mana < 10) return "💧 Low mana: use your free basic attack or a mana/adventure reward.";
+    if (state?.phase === "player" && state.player?.hp < state.player?.maxHp * 0.35) return "❤️ Low HP: Heal or Shield now. Do not wait until the boss swings.";
+    return `${goal.icon} ${goal.title}. ${goal.detail}`;
+  }
+
+  function v11InstallUI() {
+    document.title = "EMX Soul Arena - Guide + Adventure";
+    const versionChip = document.querySelector(".version-chip");
+    if (versionChip) versionChip.textContent = V11_UPDATE_NAME;
+    const sub = document.querySelector(".brand-title-card .subtitle");
+    if (sub) sub.textContent = "Guided tutorial, Next Goal help, quest board, power guide, boss warnings, adventure rooms, gear forge, arcade, campaign, pets, skins, and multiplayer.";
+
+    const start = $("startScreen");
+    if (start && !$("v11GuidePanel")) {
+      const panel = document.createElement("section");
+      panel.id = "v11GuidePanel";
+      panel.className = "v11-guide-panel";
+      const anchor = $("v10FunPanel") || $("v8StartPanel") || $("v7StartPanel") || start.querySelector(".section-heading");
+      if (anchor) anchor.insertAdjacentElement("afterend", panel);
+      else start.insertBefore(panel, start.firstChild);
+    }
+
+    const footer = document.querySelector(".footer-actions");
+    if (footer && !$("v11BattleDock")) {
+      const dock = document.createElement("section");
+      dock.id = "v11BattleDock";
+      dock.className = "v7-battle-dock v11-battle-dock";
+      dock.innerHTML = `
+        <button data-v11-action="nextGoal">🎯 Next Goal</button>
+        <button data-v11-action="guide">🤖 Guide</button>
+        <button data-v11-action="quests">📋 Quests</button>
+        <button data-v11-action="powers">📘 Powers</button>
+        <button data-v11-action="forge">🔧 Forge</button>
+      `;
+      const after = $("v10BattleDock") || $("v9BattleDock") || footer;
+      after.insertAdjacentElement("afterend", dock);
+    }
+
+    if (!$("v11NpcBubble")) {
+      const bubble = document.createElement("section");
+      bubble.id = "v11NpcBubble";
+      bubble.className = "v11-npc-bubble";
+      bubble.innerHTML = `<div class="v11-npc-face">🤖</div><p id="v11NpcText">EMX Bot is loading tips...</p><button data-v11-action="nextTip">Next Tip</button>`;
+      const arena = $("arena") || document.querySelector("main.app");
+      arena?.insertAdjacentElement("afterend", bubble);
+    }
+
+    v11EnsureOverlays();
+    v11RenderPanel();
+    v11RenderNpc();
+  }
+
+  function v11EnsureOverlays() {
+    if (!$("v11GuideOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v11GuideOverlay" class="overlay hidden">
+          <div class="modal v11-modal-wide">
+            <div class="modal-header-row">
+              <div><p class="eyebrow">EMX Bot</p><h2 id="v11GuideTitle">Guide</h2></div>
+              <button class="close-btn" data-v11-action="close">✕</button>
+            </div>
+            <div id="v11GuideBody"></div>
+          </div>
+        </section>
+      `);
+    }
+    if (!$("v11QuestOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v11QuestOverlay" class="overlay hidden">
+          <div class="modal v11-modal-wide">
+            <div class="modal-header-row">
+              <div><p class="eyebrow">Guide Quests</p><h2>Clear Goals + Earn Rewards</h2></div>
+              <button class="close-btn" data-v11-action="close">✕</button>
+            </div>
+            <div id="v11QuestBody"></div>
+          </div>
+        </section>
+      `);
+    }
+    if (!$("v11PowerOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v11PowerOverlay" class="overlay hidden">
+          <div class="modal v11-modal-wide">
+            <div class="modal-header-row">
+              <div><p class="eyebrow">Power Guide</p><h2>What Each Power Does</h2></div>
+              <button class="close-btn" data-v11-action="close">✕</button>
+            </div>
+            <div id="v11PowerBody"></div>
+          </div>
+        </section>
+      `);
+    }
+    if (!$("v11ForgeOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v11ForgeOverlay" class="overlay hidden">
+          <div class="modal v11-modal-wide">
+            <div class="modal-header-row">
+              <div><p class="eyebrow">Gear Forge</p><h2>Upgrade Equipped Gear</h2></div>
+              <button class="close-btn" data-v11-action="close">✕</button>
+            </div>
+            <div id="v11ForgeBody"></div>
+          </div>
+        </section>
+      `);
+    }
+    if (!$("v11AdventureOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v11AdventureOverlay" class="overlay hidden">
+          <div class="modal v11-modal-wide v11-adventure-modal">
+            <div id="v11AdventureBody"></div>
+          </div>
+        </section>
+      `);
+    }
+    if (!$("v11BossBanner")) {
+      document.body.insertAdjacentHTML("beforeend", `<div id="v11BossBanner" class="v11-boss-banner"><strong>⚠️ Boss Warning</strong><span id="v11BossBannerText">Use Shield now!</span></div>`);
+    }
+  }
+
+  function v11RenderPanel() {
+    const panel = $("v11GuidePanel");
+    if (!panel) return;
+    const goal = v11NextGoal();
+    const complete = V11_QUESTS.filter((q) => v11Meta.questClaims[q.id]).length;
+    const campaign = v11CampaignMeta();
+    const forgeCount = Object.values(v11Meta.forgeLevels || {}).reduce((sum, level) => sum + Number(level || 0), 0);
+    panel.innerHTML = `
+      <div class="v11-panel-head">
+        <div>
+          <p class="eyebrow">V11 Guide + Adventure</p>
+          <h3>${goal.icon} ${v11Escape(goal.title)}</h3>
+        </div>
+        <span class="v11-pill">${complete}/${V11_QUESTS.length} Quests</span>
+      </div>
+      <p class="v11-next-text">${v11Escape(goal.detail)}</p>
+      <div class="v11-stats-row">
+        <span>🚪 ${v11Meta.adventureRooms || 0} rooms</span>
+        <span>🔧 ${forgeCount} forge lvls</span>
+        <span>🎁 ${(campaign.chests || []).length} campaign chests</span>
+      </div>
+      <div class="v11-button-grid">
+        <button class="v11-primary" data-v11-action="nextGoal">🎯 Next Goal</button>
+        <button data-v11-action="tutorial">🎓 Tutorial</button>
+        <button data-v11-action="quests">📋 Quest Board</button>
+        <button data-v11-action="powers">📘 Power Guide</button>
+        <button data-v11-action="forge">🔧 Gear Forge</button>
+        <button data-v11-action="guide">🤖 EMX Bot</button>
+      </div>
+    `;
+  }
+
+  function v11RenderNpc() {
+    const text = $("v11NpcText");
+    if (!text) return;
+    text.textContent = v11Tip();
+  }
+
+  function v11Open(id) {
+    ["v11GuideOverlay", "v11QuestOverlay", "v11PowerOverlay", "v11ForgeOverlay", "v11AdventureOverlay"].forEach((name) => $(name)?.classList.add("hidden"));
+    $(id)?.classList.remove("hidden");
+    if (id === "v11QuestOverlay") v11RenderQuestBoard();
+    if (id === "v11PowerOverlay") v11RenderPowerGuide();
+    if (id === "v11ForgeOverlay") v11RenderForge();
+    v11Play("tap");
+  }
+
+  function v11Close() {
+    ["v11GuideOverlay", "v11QuestOverlay", "v11PowerOverlay", "v11ForgeOverlay", "v11AdventureOverlay"].forEach((name) => $(name)?.classList.add("hidden"));
+  }
+
+  function v11RenderGuide(mode = "guide") {
+    const title = $("v11GuideTitle");
+    const body = $("v11GuideBody");
+    if (!title || !body) return;
+    if (mode === "goal") {
+      const goal = v11NextGoal();
+      v11Meta.goalViews += 1;
+      v11Track("goalViews", 1);
+      v11Meta.lastGoal = `${goal.title}: ${goal.detail}`;
+      v11SaveMeta();
+      title.textContent = "What Do I Do Next?";
+      body.innerHTML = `
+        <div class="v11-goal-card">
+          <div class="v11-big-icon">${goal.icon}</div>
+          <h3>${v11Escape(goal.title)}</h3>
+          <p>${v11Escape(goal.detail)}</p>
+          <div class="v11-control-row">
+            <button class="v11-primary" data-v11-goal-action="${v11Escape(goal.action)}">Do This</button>
+            <button data-v11-action="tutorial">Open Tutorial</button>
+            <button data-v11-action="quests">Quest Board</button>
+          </div>
+        </div>
+        <div class="v11-instruction-card">
+          <strong>Simple rule:</strong>
+          <span>Low HP → Heal or Shield.</span>
+          <span>Boss warning → Shield, Heal, Ultimate, Stun, Freeze, or Root.</span>
+          <span>Stuck between runs → Gear, Skill Tree, Chests, Quest Board.</span>
+        </div>
+      `;
+      return;
+    }
+    if (mode === "tutorial") return v11RenderTutorial();
+    title.textContent = "EMX Bot Guide";
+    body.innerHTML = `
+      <div class="v11-bot-card">
+        <div class="v11-big-icon">🤖</div>
+        <h3>Need help?</h3>
+        <p>${v11Escape(v11Tip())}</p>
+      </div>
+      <div class="v11-guide-grid">
+        <button data-v11-action="nextGoal">🎯 What do I do next?</button>
+        <button data-v11-action="tutorial">🎓 Teach me how to play</button>
+        <button data-v11-action="powers">📘 Explain my powers</button>
+        <button data-v11-action="quests">📋 Show quests</button>
+        <button data-v11-action="forge">🔧 Upgrade gear</button>
+        <button data-v11-action="external" data-v11-external="arcade">🎡 Play mini-games</button>
+      </div>
+      <div class="v11-instruction-card">
+        <strong>Kid-friendly instructions:</strong>
+        <span>1. Pick a class.</span>
+        <span>2. Tap powers to beat enemies.</span>
+        <span>3. Use Shield before big boss attacks.</span>
+        <span>4. Choose upgrade cards after wins.</span>
+        <span>5. Open chests, equip gear, and try again stronger.</span>
+      </div>
+    `;
+  }
+
+  function v11RenderTutorial() {
+    const title = $("v11GuideTitle");
+    const body = $("v11GuideBody");
+    if (!title || !body) return;
+    const index = clamp(Number(v11Meta.tutorialStep || 0), 0, V11_TUTORIAL_STEPS.length - 1);
+    const step = V11_TUTORIAL_STEPS[index];
+    title.textContent = `Tutorial ${index + 1}/${V11_TUTORIAL_STEPS.length}`;
+    body.innerHTML = `
+      <div class="v11-tutorial-card">
+        <div class="v11-big-icon">${step.icon}</div>
+        <h3>${v11Escape(step.title)}</h3>
+        <p>${v11Escape(step.body)}</p>
+        <small>${v11Escape(step.task)}</small>
+        <div class="v11-progress-line"><span style="width:${((index + 1) / V11_TUTORIAL_STEPS.length) * 100}%"></span></div>
+        <div class="v11-control-row">
+          <button data-v11-action="tutorialBack" ${index <= 0 ? "disabled" : ""}>Back</button>
+          <button class="v11-primary" data-v11-action="tutorialNext">${index >= V11_TUTORIAL_STEPS.length - 1 ? "Finish Tutorial" : "Next"}</button>
+          <button data-v11-action="tutorialSkip">Skip</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function v11FinishTutorial() {
+    v11Meta.tutorialDone = true;
+    v11Meta.tutorialStep = V11_TUTORIAL_STEPS.length - 1;
+    v11Track("tutorial", 1);
+    v11SaveMeta();
+    v11Award({ crystals: 10, tickets: 5 }, "Tutorial complete");
+    v11RenderGuide("goal");
+  }
+
+  function v11RenderQuestBoard() {
+    const body = $("v11QuestBody");
+    if (!body) return;
+    body.innerHTML = `
+      <p class="v11-mini-text">Complete these to learn the game and earn useful rewards. Claim buttons light up when a quest is ready.</p>
+      <div class="v11-quest-grid">
+        ${V11_QUESTS.map((quest) => {
+          const progress = Math.min(v11GetQuestProgress(quest), quest.goal);
+          const ready = progress >= quest.goal;
+          const claimed = Boolean(v11Meta.questClaims[quest.id]);
+          return `
+            <article class="v11-quest-card ${ready ? "ready" : ""} ${claimed ? "claimed" : ""}">
+              <div class="v11-quest-top"><strong>${quest.icon} ${v11Escape(quest.title)}</strong><span>${progress}/${quest.goal}</span></div>
+              <p>${v11Escape(quest.desc)}</p>
+              <div class="v11-progress-line"><span style="width:${(progress / quest.goal) * 100}%"></span></div>
+              <small>Reward: ${v11RewardText(quest.reward)}</small>
+              <button data-v11-claim="${quest.id}" ${!ready || claimed ? "disabled" : ""}>${claimed ? "Claimed" : ready ? "Claim Reward" : "In Progress"}</button>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function v11ClaimQuest(id) {
+    const quest = V11_QUESTS.find((item) => item.id === id);
+    if (!quest) return;
+    if (v11Meta.questClaims[id]) return;
+    if (v11GetQuestProgress(quest) < quest.goal) return;
+    v11Meta.questClaims[id] = true;
+    v11Meta.questsClaimed = Number(v11Meta.questsClaimed || 0) + 1;
+    v11Track("questsClaimed", 1);
+    v11SaveMeta();
+    v11Award(quest.reward, quest.title);
+    v11RenderQuestBoard();
+  }
+
+  function v11PowerBestUse(key, power) {
+    const text = `${key} ${power.label} ${power.desc} ${power.animation || ""}`.toLowerCase();
+    if (key === "guard") return "Use when a boss warning appears or when your HP is low.";
+    if (key === "heal") return "Use when you are below half HP or before a boss swing.";
+    if (key === "ultimate") return "Save for bosses, elites, or when you need a big comeback.";
+    if (text.includes("stun") || text.includes("freeze") || text.includes("root")) return "Great against bosses because it can stop or slow attacks.";
+    if (text.includes("poison") || text.includes("burn") || text.includes("bleed")) return "Best in longer fights because damage keeps ticking.";
+    if ((power.cost || 0) === 0) return "Use when you are saving mana.";
+    return "Use when you have enough mana and need more damage.";
+  }
+
+  function v11RenderPowerGuide(classKey = v11SelectedClass) {
+    const body = $("v11PowerBody");
+    if (!body) return;
+    v11SelectedClass = classKey;
+    v11Meta.powerGuideViews += 1;
+    v11Track("powerGuideViews", 1);
+    v11SaveMeta();
+    const classData = CLASS_DATA[classKey] || CLASS_DATA.flame;
+    const level = state?.level || 1;
+    body.innerHTML = `
+      <div class="v11-class-tabs">
+        ${Object.entries(CLASS_DATA).map(([key, data]) => `<button class="${key === classKey ? "active" : ""}" data-v11-class="${key}">${data.icon} ${data.name}</button>`).join("")}
+      </div>
+      <div class="v11-power-help">
+        <h3>${classData.icon} ${classData.name}</h3>
+        <p>Tap powers in battle. Free powers cost no mana. Locked powers open when your run level gets high enough.</p>
+      </div>
+      <div class="v11-power-grid">
+        ${POWER_ORDER.map((key) => {
+          const power = classData.powers[key];
+          if (!power) return "";
+          const locked = power.unlock && level < power.unlock;
+          return `
+            <article class="v11-power-card ${locked ? "locked" : ""}">
+              <div class="v11-power-top"><strong>${power.icon} ${power.label}</strong><span>${locked ? `Unlock L${power.unlock}` : "Ready"}</span></div>
+              <p>${v11Escape(power.desc || "No description.")}</p>
+              <div class="v11-tag-row">
+                <span>${power.ultCost ? `ULT ${power.ultCost}` : power.cost ? `Mana ${power.cost}` : "Free"}</span>
+                ${power.damage ? `<span>DMG ${power.damage}${power.hits ? ` x${power.hits}` : ""}</span>` : ""}
+                ${power.heal ? `<span>Heal ${power.heal}</span>` : ""}
+                ${power.shield ? `<span>Shield ${power.shield}</span>` : ""}
+              </div>
+              <small><b>Best use:</b> ${v11Escape(v11PowerBestUse(key, power))}</small>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function v11ForgeCost(id) {
+    const level = Number(v11Meta.forgeLevels[id] || 0);
+    const rarity = V11_GEAR[id]?.rarity || "Common";
+    const rarityBoost = { Common: 0, Rare: 15, Epic: 35, Legendary: 70, Mythic: 120 }[rarity] || 0;
+    return 45 + rarityBoost + level * 35;
+  }
+
+  function v11RenderForge() {
+    const body = $("v11ForgeBody");
+    if (!body) return;
+    const campaign = v11CampaignMeta();
+    const hq = v11Read(V11_HQ_KEY, {});
+    const crystals = Number(hq.crystals || 0);
+    const equippedIds = Object.values(campaign.equipped || {}).filter(Boolean);
+    const owned = (campaign.inventory || []).filter((id) => V11_GEAR[id]);
+    const items = equippedIds.length ? equippedIds : owned;
+
+    body.innerHTML = `
+      <div class="v11-forge-intro">
+        <strong>💎 ${crystals} EMX Crystals</strong>
+        <p>Forge upgrades are permanent and apply to your next run. Equipped gear appears first. If nothing shows, clear campaign zones or open gear chests.</p>
+      </div>
+      <div class="v11-forge-grid">
+        ${items.length ? items.map((id) => {
+          const gear = V11_GEAR[id];
+          const level = Number(v11Meta.forgeLevels[id] || 0);
+          const cost = v11ForgeCost(id);
+          const equipped = equippedIds.includes(id);
+          return `
+            <article class="v11-forge-card rarity-${v11Escape(gear.rarity.toLowerCase())}">
+              <div class="v11-forge-top"><strong>${gear.icon} ${gear.title}</strong><span>Lv ${level}/10</span></div>
+              <p>${v11Escape(gear.desc)}</p>
+              <div class="v11-tag-row"><span>${gear.slot.toUpperCase()}</span><span>${gear.rarity}</span><span>${equipped ? "Equipped" : "Owned"}</span></div>
+              <small>Next level adds extra ${gear.slot === "weapon" ? "damage" : gear.slot === "armor" ? "HP/shield" : gear.slot === "charm" ? "mana/healing" : "ultimate/boss power"}.</small>
+              <button data-v11-forge="${id}" ${level >= 10 || crystals < cost ? "disabled" : ""}>${level >= 10 ? "Max Level" : `Upgrade for 💎 ${cost}`}</button>
+            </article>
+          `;
+        }).join("") : `<div class="v11-empty-card"><strong>No gear yet.</strong><p>Open Campaign Map, clear zones, or open chests to collect gear.</p><button data-v11-goal-action="map">Open Map</button></div>`}
+      </div>
+    `;
+  }
+
+  function v11UpgradeForge(id) {
+    const gear = V11_GEAR[id];
+    if (!gear) return;
+    const hq = v11Read(V11_HQ_KEY, {});
+    const cost = v11ForgeCost(id);
+    const crystals = Number(hq.crystals || 0);
+    const level = Number(v11Meta.forgeLevels[id] || 0);
+    if (level >= 10) return v11Toast("This gear is already max level.");
+    if (crystals < cost) return v11Toast(`Need 💎 ${cost} crystals to upgrade.`);
+    hq.crystals = crystals - cost;
+    v11Write(V11_HQ_KEY, hq);
+    v11Meta.forgeLevels[id] = level + 1;
+    v11Track("forgeUpgrades", 1);
+    v11SaveMeta();
+    v11Play("upgrade");
+    v11Toast(`${gear.title} upgraded to Lv ${level + 1}.`);
+    v11RenderForge();
+    v11RenderPanel();
+  }
+
+  function v11ApplyForgeToState(targetState) {
+    if (!targetState) return targetState;
+    const campaign = v11CampaignMeta();
+    const equipped = campaign.equipped || {};
+    targetState.v11ForgeApplied = [];
+    Object.values(equipped).forEach((id) => {
+      const level = Number(v11Meta.forgeLevels[id] || 0);
+      const gear = V11_GEAR[id];
+      if (!gear || level <= 0) return;
+      targetState.v11ForgeApplied.push(`${gear.title} Lv ${level}`);
+      targetState.mods = targetState.mods || {};
+      if (gear.slot === "weapon") {
+        targetState.mods.basicDamage = Number(targetState.mods.basicDamage || 0) + level * 3;
+        targetState.mods.specialDamage = Number(targetState.mods.specialDamage || 0) + level * 2;
+      }
+      if (gear.slot === "armor") {
+        targetState.player.maxHp += level * 8;
+        targetState.player.hp += level * 8;
+        targetState.mods.startShield = Number(targetState.mods.startShield || 0) + level * 5;
+        targetState.mods.damageReduction = Number(targetState.mods.damageReduction || 0) + Math.min(0.12, level * 0.01);
+      }
+      if (gear.slot === "charm") {
+        targetState.mods.manaRegen = Number(targetState.mods.manaRegen || 0) + level * 2;
+        targetState.mods.healBonus = Number(targetState.mods.healBonus || 0) + level * 3;
+        targetState.mods.statusChance = Number(targetState.mods.statusChance || 0) + Math.min(0.12, level * 0.01);
+      }
+      if (gear.slot === "core") {
+        targetState.mods.ultGain = Number(targetState.mods.ultGain || 0) + level * 3;
+        targetState.mods.bossDamage = Number(targetState.mods.bossDamage || 0) + level * 0.025;
+      }
+    });
+    return targetState;
+  }
+
+  function v11ShouldAdventure() {
+    if (!state || state.phase === "gameover" || state.phase === "adventure") return false;
+    state.v11 = state.v11 || { adventuresSeen: {} };
+    state.v11.adventuresSeen = state.v11.adventuresSeen || {};
+    const key = state.campaign ? `${state.campaign.zoneId}-${state.campaign.zoneBattle}` : `wave-${state.wave}`;
+    if (state.v11.adventuresSeen[key]) return false;
+    if (state.wave <= 1 && !state.campaign) return false;
+    if (state.campaign) {
+      const step = Number(state.campaign.zoneBattle || 1);
+      const length = Number(state.campaign.zoneLength || 5);
+      const mini = Math.ceil(length / 2);
+      if (step === 1 || step === mini || step === length) return false;
+      return step % 2 === 0 || Math.random() < 0.35;
+    }
+    if (state.wave % 5 === 0) return false;
+    return state.wave % 3 === 0 || Math.random() < 0.3;
+  }
+
+  function v11ShowAdventureRoom(resume) {
+    if (!state) return resume?.();
+    state.phase = "adventure";
+    state.v11 = state.v11 || { adventuresSeen: {} };
+    const key = state.campaign ? `${state.campaign.zoneId}-${state.campaign.zoneBattle}` : `wave-${state.wave}`;
+    state.v11.adventuresSeen[key] = true;
+    v11AdventureResume = resume;
+    const room = choice(V11_ADVENTURES);
+    const body = $("v11AdventureBody");
+    if (!body) return resume?.();
+    body.innerHTML = `
+      <div class="v11-adventure-hero">
+        <div class="v11-big-icon">${room.icon}</div>
+        <p class="eyebrow">Adventure Room</p>
+        <h2>${v11Escape(room.title)}</h2>
+        <p>${v11Escape(room.prompt)}</p>
+      </div>
+      <div class="v11-adventure-grid">
+        ${room.choices.map((option) => `
+          <button class="v11-adventure-choice" data-v11-adventure-choice="${option.id}">
+            <strong>${option.icon} ${v11Escape(option.title)}</strong>
+            <span>${v11Escape(option.desc)}</span>
+          </button>
+        `).join("")}
+      </div>
+      <small class="v11-mini-text">Choose one. Then the next fight begins.</small>
+    `;
+    v11Open("v11AdventureOverlay");
+    v11Play("chest");
+    if (typeof render === "function") render();
+  }
+
+  function v11ApplyAdventureChoice(id) {
+    if (!state) return;
+    state.v11 = state.v11 || {};
+    switch (id) {
+      case "fountain-heal": {
+        const amount = Math.round((state.player.maxHp || 100) * 0.35);
+        state.player.hp = clamp((state.player.hp || 0) + amount, 0, state.player.maxHp || 100);
+        v11Toast(`Healing Fountain: +${amount} HP`);
+        break;
+      }
+      case "fountain-mana":
+        state.player.mana = clamp((state.player.mana || 0) + 35, 0, state.player.maxMana || 999);
+        v11Toast("Mana restored.");
+        break;
+      case "fountain-shield":
+        state.player.shield = Number(state.player.shield || 0) + 45;
+        v11Toast("Barrier gained: +45 shield.");
+        break;
+      case "treasure-coins":
+        state.coins = Number(state.coins || 0) + 90;
+        v11Toast("Treasure: +90 coins.");
+        break;
+      case "treasure-crystals":
+        v11Award({ crystals: 25 }, "Treasure Vault");
+        break;
+      case "treasure-chest":
+        v11Award({ chest: "neon" }, "Treasure Vault");
+        break;
+      case "puzzle-correct":
+        state.player.shield = Number(state.player.shield || 0) + 35;
+        v11Award({ crystals: 18, coins: 40 }, "Puzzle solved");
+        break;
+      case "puzzle-wrong1":
+      case "puzzle-wrong2":
+        state.player.mana = clamp((state.player.mana || 0) + 8, 0, state.player.maxMana || 999);
+        v11Toast("Not correct, but EMX Bot gives you +8 mana for trying.");
+        break;
+      case "dojo-damage":
+        state.mods.basicDamage = Number(state.mods.basicDamage || 0) + 10;
+        state.mods.specialDamage = Number(state.mods.specialDamage || 0) + 10;
+        v11Toast("Training boost: +10 attack damage this run.");
+        break;
+      case "dojo-ult":
+        state.player.ult = clamp((state.player.ult || 0) + 35, 0, state.player.maxUlt || 100);
+        v11Toast("Ultimate drill: +35 ultimate.");
+        break;
+      case "dojo-combo":
+        state.combo = Math.max(Number(state.combo || 0), 3);
+        state.overdrive = clamp(Number(state.overdrive || 0) + 20, 0, 100);
+        v11Toast("Combo drill: combo energy gained.");
+        break;
+      case "risk-small":
+        v11Award({ crystals: 15 }, "Safe sample");
+        break;
+      case "risk-medium":
+        state.player.hp = Math.max(1, Number(state.player.hp || 1) - 10);
+        state.mods.specialDamage = Number(state.mods.specialDamage || 0) + 15;
+        state.coins = Number(state.coins || 0) + 70;
+        v11Toast("Risk sample: -10 HP, +damage, +70 coins.");
+        break;
+      case "risk-big":
+        state.player.hp = Math.max(1, Number(state.player.hp || 1) - 20);
+        v11Award({ chest: "boss", crystals: 10 }, "Overload sample");
+        break;
+      default:
+        v11Toast("Adventure complete.");
+    }
+    v11Meta.adventureRooms += 1;
+    v11Meta.lastAdventure = id;
+    v11Track("adventureRooms", 1);
+    v11SaveMeta();
+    v11Close();
+    const resume = v11AdventureResume;
+    v11AdventureResume = null;
+    if (typeof addLog === "function") addLog("Adventure room cleared. Next fight begins.");
+    if (typeof saveGame === "function") saveGame();
+    if (resume) resume();
+  }
+
+  function v11ShowBossWarning(message = "Boss is charging a heavy attack. Use Shield, Heal, Ultimate, Stun, Freeze, or Root now!") {
+    const banner = $("v11BossBanner");
+    const text = $("v11BossBannerText");
+    if (text) text.textContent = message;
+    if (banner) {
+      banner.classList.add("show");
+      clearTimeout(v11ShowBossWarning._timer);
+      v11ShowBossWarning._timer = setTimeout(() => banner.classList.remove("show"), 4800);
+    }
+    v11RenderNpc();
+  }
+
+  function v11MaybeBossWarning() {
+    if (!state?.enemy || state.phase !== "player") return;
+    const enemy = state.enemy;
+    if (!(enemy.isBoss || enemy.isMiniBoss || enemy.v7ZoneFinal)) return;
+    state.v11 = state.v11 || {};
+    state.v11.bossWarningsSeen = state.v11.bossWarningsSeen || {};
+    const turn = Number(enemy.turn || 0);
+    const key = `${state.wave || 0}-${state.campaign?.zoneBattle || 0}-${enemy.id || enemy.name}-${turn}`;
+    if (state.v11.bossWarningsSeen[key]) return;
+    if (turn === 0 || turn % 2 === 1 || enemy.charging) {
+      state.v11.bossWarningsSeen[key] = true;
+      state.v11BossThreat = { active: true, key, answered: false, turn, enemy: enemy.name };
+      if (typeof addLog === "function") addLog(`⚠️ ${enemy.name} is charging. Shield, heal, stun/freeze/root, or ultimate now.`);
+      v11ShowBossWarning(`${enemy.name} is charging. Use Shield, Heal, Ultimate, Stun, Freeze, or Root!`);
+    }
+  }
+
+  function v11HandleGoalAction(action) {
+    if (action === "tutorial") { v11RenderGuide("tutorial"); return v11Open("v11GuideOverlay"); }
+    if (action === "quests") return v11Open("v11QuestOverlay");
+    if (action === "powers") return v11Open("v11PowerOverlay");
+    if (action === "forge") return v11Open("v11ForgeOverlay");
+    if (action === "skills") {
+      const btn = document.querySelector('[data-v7-action="openSkills"]') || document.querySelector('[data-v7-action="openMap"]');
+      if (btn) btn.click(); else v11Toast("Open Skill Tree from the Campaign panel.");
+      return;
+    }
+    if (action === "chests") {
+      const btn = document.querySelector('[data-v7-action="claimDaily"]') || document.querySelector('[data-v7-action="openChests"]');
+      if (btn) btn.click(); else v11Toast("Open Chests from the Campaign or Portal panels.");
+      return;
+    }
+    if (action === "map") {
+      const btn = document.querySelector('[data-v7-action="openMap"]');
+      if (btn) btn.click(); else v11Toast("Open Campaign Map from the start screen.");
+      return;
+    }
+    if (action === "arcade") {
+      const btn = document.querySelector('[data-v10-action="arcade"]');
+      if (btn) btn.click(); else v11Toast("Open Fun Arcade from the V10 panel.");
+    }
+  }
+
+  function v11PatchGame() {
+    if (window.__emxV11Patched) return;
+    window.__emxV11Patched = true;
+
+    const oldMakeState = makeState;
+    makeState = function v11MakeStatePatched(classKey) {
+      const newState = oldMakeState(classKey);
+      newState.v11 = newState.v11 || { update: V11_UPDATE_NAME, adventuresSeen: {} };
+      v11ApplyForgeToState(newState);
+      return newState;
+    };
+
+    const oldStartNewRun = startNewRun;
+    startNewRun = function v11StartNewRunPatched(classKey) {
+      v11Track("runs", 1);
+      oldStartNewRun(classKey);
+      if (state?.v11ForgeApplied?.length && typeof addLog === "function") {
+        addLog(`Forge bonuses active: ${state.v11ForgeApplied.join(", ")}.`);
+      }
+      v11RenderPanel();
+      v11RenderNpc();
+      if (typeof saveGame === "function") saveGame();
+    };
+
+    const oldStartFight = startFight;
+    startFight = function v11StartFightPatched() {
+      if (v11ShouldAdventure()) {
+        return v11ShowAdventureRoom(() => {
+          oldStartFight();
+          v11MaybeBossWarning();
+          v11RenderNpc();
+        });
+      }
+      oldStartFight();
+      v11MaybeBossWarning();
+      v11RenderNpc();
+    };
+
+    const oldStartPlayerTurn = startPlayerTurn;
+    startPlayerTurn = function v11StartPlayerTurnPatched() {
+      const result = oldStartPlayerTurn();
+      setTimeout(() => {
+        v11MaybeBossWarning();
+        v11RenderNpc();
+      }, 80);
+      return result;
+    };
+
+    const oldUsePower = usePower;
+    usePower = async function v11UsePowerPatched(key) {
+      if (state?.phase === "player") {
+        if (key === "guard") v11Track("guardUses", 1);
+        if (key === "heal") v11Track("healUses", 1);
+        if (state?.v11BossThreat?.active) {
+          const power = getPower(key);
+          const label = `${key} ${power?.label || ""} ${power?.desc || ""}`.toLowerCase();
+          const responds = ["guard", "heal", "ultimate"].includes(key) || label.includes("stun") || label.includes("freeze") || label.includes("root") || label.includes("shield");
+          if (responds) {
+            state.v11BossThreat.answered = true;
+            v11Track("bossWarnings", 1);
+            if (typeof addLog === "function") addLog("Boss warning answered. Incoming heavy damage reduced.");
+            v11ShowBossWarning("Good counter! The next boss hit will be reduced.");
+          }
+        }
+      }
+      return oldUsePower(key);
+    };
+
+    const oldApplyEnemyMove = applyEnemyMove;
+    applyEnemyMove = function v11ApplyEnemyMovePatched(move) {
+      if (state?.v11BossThreat?.active && move && Number(move.damage || 0) > 0) {
+        const answered = Boolean(state.v11BossThreat.answered || state.player?.shield > 0 || hasStatus?.(state.player, "parry") || hasStatus?.(state.player, "dodge"));
+        const factor = answered ? 0.58 : 1.08;
+        move = { ...move, damage: Math.max(1, Math.round(move.damage * factor)) };
+        if (answered) {
+          if (typeof addLog === "function") addLog("Boss warning counter worked: heavy damage reduced.");
+        } else if (typeof addLog === "function") {
+          addLog("Boss warning missed: use Shield/Heal/Ultimate next time.");
+        }
+        state.v11BossThreat.active = false;
+      }
+      return oldApplyEnemyMove(move);
+    };
+
+    const oldWinFight = winFight;
+    winFight = function v11WinFightPatched() {
+      const defeated = state?.enemy ? { ...state.enemy } : null;
+      oldWinFight();
+      if (defeated) v11Track("defeats", 1);
+      if (defeated?.isBoss || defeated?.isMiniBoss || defeated?.v7ZoneFinal) v11Track("bossDefeats", 1);
+      v11RenderPanel();
+      v11RenderNpc();
+    };
+
+    const oldChooseUpgrade = chooseUpgrade;
+    chooseUpgrade = function v11ChooseUpgradePatched(id) {
+      v11Track("upgrades", 1);
+      return oldChooseUpgrade(id);
+    };
+
+    const oldRender = render;
+    render = function v11RenderPatched() {
+      oldRender();
+      const versionChip = document.querySelector(".version-chip");
+      if (versionChip) versionChip.textContent = V11_UPDATE_NAME;
+      v11InstallUI();
+      v11RenderNpc();
+      if (state?.phase === "player") v11MaybeBossWarning();
+    };
+  }
+
+  function v11WireEvents() {
+    if (v11WireEvents.done) return;
+    v11WireEvents.done = true;
+    document.addEventListener("click", (event) => {
+      const actionEl = event.target.closest("[data-v11-action]");
+      const claimEl = event.target.closest("[data-v11-claim]");
+      const classEl = event.target.closest("[data-v11-class]");
+      const forgeEl = event.target.closest("[data-v11-forge]");
+      const adventureEl = event.target.closest("[data-v11-adventure-choice]");
+      const goalEl = event.target.closest("[data-v11-goal-action]");
+      const externalEl = event.target.closest("[data-v11-external]");
+
+      if (actionEl || claimEl || classEl || forgeEl || adventureEl || goalEl || externalEl) v11Play("tap");
+      if (claimEl) return v11ClaimQuest(claimEl.dataset.v11Claim);
+      if (classEl) return v11RenderPowerGuide(classEl.dataset.v11Class);
+      if (forgeEl) return v11UpgradeForge(forgeEl.dataset.v11Forge);
+      if (adventureEl) return v11ApplyAdventureChoice(adventureEl.dataset.v11AdventureChoice);
+      if (goalEl) return v11HandleGoalAction(goalEl.dataset.v11GoalAction);
+      if (externalEl) return v11HandleGoalAction(externalEl.dataset.v11External);
+      if (!actionEl) return;
+
+      const action = actionEl.dataset.v11Action;
+      if (action === "close") return v11Close();
+      if (action === "nextGoal") { v11RenderGuide("goal"); return v11Open("v11GuideOverlay"); }
+      if (action === "guide") { v11RenderGuide("guide"); return v11Open("v11GuideOverlay"); }
+      if (action === "tutorial") { v11RenderGuide("tutorial"); return v11Open("v11GuideOverlay"); }
+      if (action === "quests") return v11Open("v11QuestOverlay");
+      if (action === "powers") return v11Open("v11PowerOverlay");
+      if (action === "forge") return v11Open("v11ForgeOverlay");
+      if (action === "nextTip") {
+        v11Meta.tipsSeen += 1;
+        v11SaveMeta();
+        const text = $("v11NpcText");
+        if (text) text.textContent = V11_TIPS[v11Meta.tipsSeen % V11_TIPS.length];
+      }
+      if (action === "tutorialBack") {
+        v11Meta.tutorialStep = Math.max(0, Number(v11Meta.tutorialStep || 0) - 1);
+        v11SaveMeta();
+        v11RenderTutorial();
+      }
+      if (action === "tutorialNext") {
+        if (Number(v11Meta.tutorialStep || 0) >= V11_TUTORIAL_STEPS.length - 1) return v11FinishTutorial();
+        v11Meta.tutorialStep = Number(v11Meta.tutorialStep || 0) + 1;
+        v11SaveMeta();
+        v11RenderTutorial();
+      }
+      if (action === "tutorialSkip") v11FinishTutorial();
+    });
+  }
+
+  v11InstallUI();
+  v11WireEvents();
+  v11PatchGame();
+  v11SaveMeta();
+
+  setTimeout(() => {
+    v11InstallUI();
+    v11RenderPanel();
+    v11RenderNpc();
+    if (typeof render === "function" && state) render();
+  }, 400);
+})();
+
+
+/* ============================================================
+   EMX Soul Arena v12: Story World / City Hub / Tower Update
+   Adds: city hub, story chapters, choices, tower, pet bonding,
+   boss phases, power loadouts, sticker book 2.0, weekly events,
+   and player profile card.
+   ============================================================ */
+(function () {
+  const V12_UPDATE_NAME = "Story World Update";
+  const V12_META_KEY = "emxSoulArenaMeta_v12";
+  const V12_REQUIRED_POWERS = ["basic", "guard", "heal", "ultimate"];
+  const V12_MAX_LOADOUT = 6;
+
+  const V12_STORIES = [
+    {
+      id: "slimeFields",
+      zone: "Slime Fields",
+      icon: "🟢",
+      boss: "Ancient Slime",
+      title: "Chapter 1: Slime Lights",
+      lines: [
+        ["EMX Bot", "The city gate is covered in glowing slime goo. It is squishy, bouncy, and very dramatic."],
+        ["You", "So I hit the slime and save the city?"],
+        ["EMX Bot", "Exactly. Use basic attacks to save mana, then use special powers when the boss gets big."]
+      ],
+      reward: "Unlocks the first safe road out of EMX City."
+    },
+    {
+      id: "goblinMarket",
+      zone: "Goblin Market",
+      icon: "👺",
+      boss: "Goblin King",
+      title: "Chapter 2: The Crown Tax",
+      lines: [
+        ["Goblin King", "No hero passes my market unless they pay the crown tax!"],
+        ["EMX Bot", "He likes to charge heavy attacks. Shield when the warning appears."],
+        ["You", "I will not pay in crystals. I will pay in combos."]
+      ],
+      reward: "Unlocks better shop deals and boss chest chances."
+    },
+    {
+      id: "boneCrypt",
+      zone: "Bone Crypt",
+      icon: "💀",
+      boss: "Bone Dragon",
+      title: "Chapter 3: The Rattling Door",
+      lines: [
+        ["EMX Bot", "The crypt door only opens for brave players and very loud skeletons."],
+        ["Bone Dragon", "I smell upgrades... and snacks."],
+        ["EMX Bot", "Poison and bleed can hurt over time. Heal early, not at 1 HP."]
+      ],
+      reward: "Unlocks undead stickers and stronger relic drops."
+    },
+    {
+      id: "stormTower",
+      zone: "Storm Tower",
+      icon: "⛈️",
+      boss: "Storm Titan",
+      title: "Chapter 4: Lightning Lessons",
+      lines: [
+        ["Storm Titan", "Climb the tower if you can dodge thunder."],
+        ["EMX Bot", "He charges huge lightning blasts. Guard, stun, freeze, or root before the impact."],
+        ["You", "Time to overcharge the whole arena."]
+      ],
+      reward: "Unlocks tower trophies and lightning gear."
+    },
+    {
+      id: "voidRift",
+      zone: "Void Rift",
+      icon: "👁️",
+      boss: "Void Emperor",
+      title: "Chapter 5: The Neon Rift",
+      lines: [
+        ["Void Emperor", "Your buttons, your pets, your upgrades... all belong to the void."],
+        ["EMX Bot", "This is the final zone. Use loadouts, pets, forge upgrades, and your ultimate."],
+        ["You", "EMX City is not getting deleted today."]
+      ],
+      reward: "Unlocks mythic bragging rights and profile badges."
+    }
+  ];
+
+  const V12_CITY_BUILDINGS = [
+    { id: "story", icon: "📖", title: "Story Chapters", desc: "Read the adventure and boss tips." },
+    { id: "tower", icon: "🗼", title: "Neon Tower", desc: "Climb floors for tickets and crystals." },
+    { id: "pet", icon: "🐾", title: "Pet Lab", desc: "Feed, train, and play with your helper." },
+    { id: "loadout", icon: "🎛️", title: "Power Loadouts", desc: "Pick which powers you bring." },
+    { id: "stickers", icon: "📒", title: "Sticker Book 2.0", desc: "Collect enemies, bosses, zones, and class stickers." },
+    { id: "events", icon: "📅", title: "Weekly Events", desc: "Check the active event and claim weekly rewards." },
+    { id: "profile", icon: "🪪", title: "Profile Card", desc: "Name, stats, badges, favorite class." },
+    { id: "choices", icon: "🚪", title: "Choice Room", desc: "Try an interactive adventure room now." },
+    { id: "campaign", icon: "🗺️", title: "Campaign Map", desc: "Open zones and permanent gear." },
+    { id: "arcade", icon: "🎡", title: "Arcade", desc: "Mini-games, tickets, prizes." },
+    { id: "forge", icon: "🛠️", title: "Forge", desc: "Upgrade gear and improve runs." },
+    { id: "multiplayer", icon: "🌐", title: "Multiplayer", desc: "Play co-op or PvP with a room code." }
+  ];
+
+  const V12_WEEKLY_EVENTS = [
+    { id: "fireWeek", icon: "🔥", title: "Fire Week", desc: "Fire and burn powers deal bonus damage.", buff: "Fire attacks +15% damage. Claim 35 crystals once this week." },
+    { id: "petRescue", icon: "🐾", title: "Pet Rescue", desc: "Pets gain mood faster and assists feel stronger.", buff: "Pet Lab gives +2 extra pet XP. Claim pet food + crystals." },
+    { id: "bossRush", icon: "👑", title: "Boss Rush", desc: "Boss counters give extra rewards.", buff: "Counter boss warnings for bonus coins and crystals." },
+    { id: "arcadeWeekend", icon: "🎮", title: "Arcade Weekend", desc: "Mini-game rewards are boosted.", buff: "Tower wins and arcade prizes give extra tickets." },
+    { id: "crystalStorm", icon: "💎", title: "Crystal Storm", desc: "Crystal rewards are boosted.", buff: "Victories and tower floors grant bonus crystals." }
+  ];
+
+  const V12_TOWER_ENEMIES = [
+    { icon: "🟢", name: "Tower Slime", hp: 42, atk: 8 },
+    { icon: "👺", name: "Tower Goblin", hp: 52, atk: 10 },
+    { icon: "🦇", name: "Tower Bat", hp: 48, atk: 11 },
+    { icon: "💀", name: "Tower Skeleton", hp: 62, atk: 12 },
+    { icon: "🕷️", name: "Tower Spider", hp: 60, atk: 11 },
+    { icon: "🗿", name: "Tower Golem", hp: 82, atk: 14 },
+    { icon: "🐉", name: "Tower Dragon", hp: 115, atk: 17, boss: true },
+    { icon: "👁️", name: "Tower Void Eye", hp: 135, atk: 19, boss: true }
+  ];
+
+  const V12_CHOICE_ROOMS = [
+    {
+      id: "crystalCave",
+      icon: "💎",
+      title: "Crystal Cave",
+      text: "A cave glows with EMX crystals. The crystals hum like tiny arcade machines.",
+      choices: [
+        { id: "take", label: "Take Crystals", desc: "+18 crystals, but next enemy gains rage.", apply: () => v12Reward({ crystals: 18, message: "You grabbed glowing crystals." }) },
+        { id: "study", label: "Study Glow", desc: "+1 skill point in your v12 profile and +pet mood.", apply: () => { v12Meta.skillChips += 1; v12Meta.pet.mood = clamp(v12Meta.pet.mood + 8, 0, 100); v12Reward({ message: "You learned from the crystal glow." }); } },
+        { id: "leave", label: "Leave It", desc: "Heal before the next fight.", apply: () => { if (state?.player) healTarget(state.player, 28, true); v12Reward({ message: "You played safe and recovered." }); } }
+      ]
+    },
+    {
+      id: "mysteryMerchant",
+      icon: "🧙",
+      title: "Mystery Merchant",
+      text: "A tiny merchant appears with three boxes. One is definitely not just a shoebox.",
+      choices: [
+        { id: "coins", label: "Buy Lucky Box", desc: "Spend 20 coins for a random reward.", apply: () => { if (state && state.coins >= 20) { state.coins -= 20; v12Reward({ crystals: rand(8, 22), tickets: rand(2, 5), message: "The lucky box sparkled." }); } else v12Toast("Need 20 coins for the Lucky Box."); } },
+        { id: "free", label: "Ask Nicely", desc: "Free small reward.", apply: () => v12Reward({ tickets: 2, message: "The merchant respected your manners." }) },
+        { id: "trade", label: "Trade Energy", desc: "Lose a little HP, gain ultimate charge.", apply: () => { if (state?.player) { state.player.hp = clamp(state.player.hp - 10, 1, state.player.maxHp); state.player.ult = clamp(state.player.ult + 35, 0, state.player.maxUlt); } v12Reward({ message: "You charged your ultimate." }); } }
+      ]
+    },
+    {
+      id: "trainingRoom",
+      icon: "🥋",
+      title: "Training Room",
+      text: "A practice dummy points at a sign: Tap smart. Block boss. Collect stickers.",
+      choices: [
+        { id: "combo", label: "Practice Combo", desc: "Start next fight with combo power.", apply: () => { if (state) state.combo = Math.max(state.combo || 0, 3); v12Reward({ message: "Combo practice complete." }); } },
+        { id: "guard", label: "Practice Block", desc: "Start next fight with shield.", apply: () => { if (state?.player) state.player.shield += 25; v12Reward({ message: "Block practice complete." }); } },
+        { id: "pet", label: "Pet Trick", desc: "Pet gains XP and mood.", apply: () => { v12PetGain(10, 7); v12Reward({ message: "Your pet learned a tiny trick." }); } }
+      ]
+    },
+    {
+      id: "puzzleDoor",
+      icon: "🚪",
+      title: "Puzzle Door",
+      text: "A neon door asks: What should you do before a boss uses a big charged attack?",
+      choices: [
+        { id: "shield", label: "Use Shield", desc: "Correct! +boss counter credit.", apply: () => { v12Meta.stats.bossCounters += 1; v12Reward({ crystals: 10, message: "The door opens. Nice boss strategy." }); } },
+        { id: "panic", label: "Panic Tap", desc: "Funny, but not ideal. Gain tickets.", apply: () => v12Reward({ tickets: 3, message: "The door giggled and gave you tickets." }) },
+        { id: "ignore", label: "Ignore Warning", desc: "Learn the lesson and gain a small heal.", apply: () => { if (state?.player) healTarget(state.player, 18, true); v12Reward({ message: "The door says: warnings matter." }); } }
+      ]
+    }
+  ];
+
+  const V12_PETS = [
+    { id: "neonDrake", icon: "🐉", name: "Neon Drake", trick: "Burn Assist", desc: "Sometimes burns enemies after attacks." },
+    { id: "spiritFox", icon: "🦊", name: "Spirit Fox", trick: "Quick Heal", desc: "Can heal after rough turns." },
+    { id: "shieldBot", icon: "🤖", name: "Shield Bot", trick: "Boss Block", desc: "Loves blocking big boss attacks." },
+    { id: "lootGoblin", icon: "🧌", name: "Loot Goblin", trick: "Coin Sniff", desc: "Finds extra coins and tickets." },
+    { id: "voidSprite", icon: "✨", name: "Void Sprite", trick: "Ultimate Spark", desc: "Charges ultimate energy." }
+  ];
+
+  function v12DefaultMeta() {
+    return {
+      version: 12,
+      playerName: "EMX Player",
+      favoriteClass: "flame",
+      storyIndex: 0,
+      storyRead: {},
+      tickets: 0,
+      skillChips: 0,
+      weeklyClaims: {},
+      loadouts: {
+        flame: ["basic", "special", "guard", "heal", "ultimate", "skill1"],
+        rogue: ["basic", "special", "guard", "heal", "ultimate", "skill1"],
+        storm: ["basic", "special", "guard", "heal", "ultimate", "skill1"],
+        nature: ["basic", "special", "guard", "heal", "ultimate", "skill1"]
+      },
+      stickers: { enemies: {}, bosses: {}, zones: {}, classes: {}, pets: {}, powers: {} },
+      pet: { id: "neonDrake", level: 1, xp: 0, mood: 72, food: 4, play: 0, training: 0 },
+      tower: { floor: 1, bestFloor: 0, hp: 110, maxHp: 110, shield: 0, enemy: null, log: ["Welcome to Neon Tower."] },
+      stats: {
+        runs: 0,
+        wins: 0,
+        defeats: 0,
+        bosses: 0,
+        towerWins: 0,
+        choices: 0,
+        bossCounters: 0,
+        loadoutSaves: 0,
+        petActions: 0,
+        stickers: 0,
+        weeklyRewards: 0,
+        storyReads: 0
+      }
+    };
+  }
+
+  function v12EnsureMeta(meta) {
+    const base = v12DefaultMeta();
+    const merged = { ...base, ...(meta || {}) };
+    merged.loadouts = { ...base.loadouts, ...(meta?.loadouts || {}) };
+    merged.stickers = {
+      enemies: { ...(meta?.stickers?.enemies || {}) },
+      bosses: { ...(meta?.stickers?.bosses || {}) },
+      zones: { ...(meta?.stickers?.zones || {}) },
+      classes: { ...(meta?.stickers?.classes || {}) },
+      pets: { ...(meta?.stickers?.pets || {}) },
+      powers: { ...(meta?.stickers?.powers || {}) }
+    };
+    merged.pet = { ...base.pet, ...(meta?.pet || {}) };
+    merged.tower = { ...base.tower, ...(meta?.tower || {}) };
+    merged.stats = { ...base.stats, ...(meta?.stats || {}) };
+    merged.weeklyClaims = { ...(meta?.weeklyClaims || {}) };
+    if (!CLASS_DATA[merged.favoriteClass]) merged.favoriteClass = "flame";
+    for (const key of Object.keys(CLASS_DATA || {})) {
+      merged.loadouts[key] = v12NormalizeLoadout(key, merged.loadouts[key]);
+    }
+    if (!V12_PETS.some((p) => p.id === merged.pet.id)) merged.pet.id = "neonDrake";
+    merged.pet.level = clamp(Number(merged.pet.level || 1), 1, 99);
+    merged.pet.xp = clamp(Number(merged.pet.xp || 0), 0, 99999);
+    merged.pet.mood = clamp(Number(merged.pet.mood || 72), 0, 100);
+    merged.pet.food = clamp(Number(merged.pet.food || 0), 0, 99);
+    return merged;
+  }
+
+  let v12Meta = v12LoadMeta();
+  let v12StoryPointer = 0;
+  let v12ChoiceResume = null;
+  let v12ChoiceActive = null;
+
+  function v12LoadMeta() {
+    try {
+      const raw = localStorage.getItem(V12_META_KEY);
+      return v12EnsureMeta(raw ? JSON.parse(raw) : v12DefaultMeta());
+    } catch (error) {
+      return v12EnsureMeta(v12DefaultMeta());
+    }
+  }
+
+  function v12SaveMeta() {
+    v12Meta = v12EnsureMeta(v12Meta);
+    localStorage.setItem(V12_META_KEY, JSON.stringify(v12Meta));
+  }
+
+  function v12NormalizeLoadout(classKey, list) {
+    const powers = CLASS_DATA?.[classKey]?.powers || {};
+    const valid = Array.isArray(list) ? list.filter((id) => powers[id]) : [];
+    const combined = Array.from(new Set([...V12_REQUIRED_POWERS.filter((id) => powers[id]), ...valid]));
+    const extras = combined.filter((id) => !V12_REQUIRED_POWERS.includes(id));
+    return [...V12_REQUIRED_POWERS.filter((id) => powers[id]), ...extras].slice(0, V12_MAX_LOADOUT);
+  }
+
+  function v12WeekKey() {
+    const now = new Date();
+    const onejan = new Date(now.getFullYear(), 0, 1);
+    const week = Math.ceil((((now - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+    return `${now.getFullYear()}-${week}`;
+  }
+
+  function v12ActiveEvent() {
+    const week = v12WeekKey().split("-").map(Number)[1] || 1;
+    return V12_WEEKLY_EVENTS[week % V12_WEEKLY_EVENTS.length];
+  }
+
+  function v12Pet() {
+    return V12_PETS.find((p) => p.id === v12Meta.pet.id) || V12_PETS[0];
+  }
+
+  function v12Escape(text) {
+    return String(text ?? "").replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch]));
+  }
+
+  function v12Toast(message) {
+    let toast = $("v12Toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(v12Toast.timer);
+    v12Toast.timer = setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+
+  function v12ExternalClick(selector, fallbackMessage) {
+    const btn = document.querySelector(selector);
+    if (btn) {
+      btn.click();
+      return true;
+    }
+    if (fallbackMessage) v12Toast(fallbackMessage);
+    return false;
+  }
+
+  function v12Reward({ crystals = 0, coins = 0, tickets = 0, message = "Reward claimed." } = {}) {
+    const event = v12ActiveEvent();
+    let crystalGain = Math.max(0, Math.round(crystals || 0));
+    if (crystalGain && event?.id === "crystalStorm") crystalGain = Math.round(crystalGain * 1.35);
+    if (crystalGain && typeof hqAwardCrystals === "function") hqAwardCrystals(crystalGain, "V12 reward");
+    if (coins && state) state.coins = Math.max(0, (state.coins || 0) + Math.round(coins));
+    if (tickets) v12Meta.tickets += Math.round(tickets);
+    if (typeof render === "function" && state) render();
+    v12SaveMeta();
+    v12Toast(`${message}${crystalGain ? ` +${crystalGain} 💎` : ""}${coins ? ` +${coins} coins` : ""}${tickets ? ` +${tickets} 🎟️` : ""}`);
+  }
+
+  function v12PetGain(xp = 0, mood = 0) {
+    const bonus = v12ActiveEvent()?.id === "petRescue" ? 2 : 0;
+    v12Meta.pet.xp += Math.max(0, Math.round(xp + bonus));
+    v12Meta.pet.mood = clamp(v12Meta.pet.mood + Math.round(mood), 0, 100);
+    while (v12Meta.pet.xp >= v12PetXpToLevel()) {
+      v12Meta.pet.xp -= v12PetXpToLevel();
+      v12Meta.pet.level += 1;
+      v12Meta.pet.mood = clamp(v12Meta.pet.mood + 10, 0, 100);
+      v12Toast(`${v12Pet().name} leveled up to ${v12Meta.pet.level}!`);
+    }
+    v12SaveMeta();
+  }
+
+  function v12PetXpToLevel() {
+    return 28 + (v12Meta.pet.level - 1) * 12;
+  }
+
+  function v12UnlockSticker(type, id, label = "Sticker") {
+    if (!v12Meta.stickers[type]) v12Meta.stickers[type] = {};
+    if (!v12Meta.stickers[type][id]) {
+      v12Meta.stickers[type][id] = { unlockedAt: Date.now(), label };
+      v12Meta.stats.stickers += 1;
+      v12SaveMeta();
+      v12Toast(`Sticker unlocked: ${label}`);
+    }
+  }
+
+  function v12InstallUI() {
+    if (!$("v12Toast")) {
+      const toast = document.createElement("div");
+      toast.id = "v12Toast";
+      toast.className = "v12-toast";
+      document.body.appendChild(toast);
+    }
+
+    if (!$("v12BossWarning")) {
+      const warning = document.createElement("div");
+      warning.id = "v12BossWarning";
+      warning.className = "v12-boss-warning";
+      warning.innerHTML = `<strong id="v12BossWarningTitle">Boss Phase Warning</strong><small id="v12BossWarningText">Use a counter move now.</small>`;
+      document.body.appendChild(warning);
+    }
+
+    if (!$("v12ChoiceRoom")) {
+      const room = document.createElement("section");
+      room.id = "v12ChoiceRoom";
+      room.className = "v12-choice-room";
+      room.innerHTML = `<div class="v12-modal"><div id="v12ChoiceContent"></div></div>`;
+      document.body.appendChild(room);
+    }
+
+    if (!$("v12Overlay")) {
+      const overlay = document.createElement("section");
+      overlay.id = "v12Overlay";
+      overlay.className = "v12-overlay";
+      overlay.innerHTML = `
+        <div class="v12-modal">
+          <div class="v12-modal-header">
+            <div>
+              <p class="eyebrow" id="v12Eyebrow">Story World</p>
+              <h2 id="v12Title">EMX City</h2>
+              <p class="v12-hint" id="v12Subtitle">Tap a building to play, collect, learn, or upgrade.</p>
+            </div>
+            <button class="v12-close" data-v12-action="close">✕</button>
+          </div>
+          <div id="v12Body"></div>
+        </div>`;
+      document.body.appendChild(overlay);
+    }
+
+    const start = $("startScreen");
+    if (start && !$("v12CityPanel")) {
+      const panel = document.createElement("section");
+      panel.id = "v12CityPanel";
+      panel.className = "v12-panel";
+      panel.innerHTML = v12RenderCityPanel();
+      const classGrid = start.querySelector(".class-grid");
+      if (classGrid) classGrid.before(panel); else start.appendChild(panel);
+    }
+
+    const battleFooter = document.querySelector(".footer-actions");
+    if (battleFooter && !$("v12BattleHubBtn")) {
+      const btn = document.createElement("button");
+      btn.id = "v12BattleHubBtn";
+      btn.className = "small-btn";
+      btn.dataset.v12Action = "openHub";
+      btn.textContent = "City";
+      battleFooter.insertBefore(btn, battleFooter.firstChild);
+    }
+
+    const subtitle = document.querySelector(".brand-title-card .subtitle");
+    if (subtitle) subtitle.textContent = "Story World update: tap EMX City buildings, climb Neon Tower, bond with pets, build loadouts, collect stickers, clear weekly events, and follow clear goals.";
+    const versionChip = document.querySelector(".version-chip");
+    if (versionChip) versionChip.textContent = V12_UPDATE_NAME;
+  }
+
+  function v12RenderCityPanel() {
+    const event = v12ActiveEvent();
+    const pet = v12Pet();
+    return `
+      <div class="v12-panel-head">
+        <div>
+          <p class="eyebrow">V12 Story World</p>
+          <h2>EMX City Hub</h2>
+          <p class="v12-panel-copy">Clear instructions: tap a building, read the goal, then play. Kids can use Story, Pet Lab, Sticker Book, Tower, Arcade, and Tutorial without guessing.</p>
+        </div>
+        <span class="v12-badge">${event.icon} ${event.title}</span>
+      </div>
+      <div class="v12-city-mini-map" aria-hidden="true">
+        <span class="v12-map-node v12-node-1">🏟️</span>
+        <span class="v12-map-node v12-node-2">🗼</span>
+        <span class="v12-map-node v12-node-3">🏙️</span>
+        <span class="v12-map-node v12-node-4">🐾</span>
+        <span class="v12-map-node v12-node-5">📒</span>
+      </div>
+      <div class="v12-mini-grid">
+        <button class="v12-mini-card" data-v12-action="story"><span class="v12-icon">📖</span><strong>Start Story</strong><small>Read chapter scenes and boss tips.</small></button>
+        <button class="v12-mini-card" data-v12-action="tower"><span class="v12-icon">🗼</span><strong>Neon Tower</strong><small>Best floor ${v12Meta.tower.bestFloor} • Tickets ${v12Meta.tickets}</small></button>
+        <button class="v12-mini-card" data-v12-action="pet"><span class="v12-icon">${pet.icon}</span><strong>${pet.name} Lab</strong><small>Lv ${v12Meta.pet.level} • Mood ${v12Meta.pet.mood}%</small></button>
+        <button class="v12-mini-card" data-v12-action="profile"><span class="v12-icon">🪪</span><strong>${v12Escape(v12Meta.playerName)}</strong><small>Profile, badges, and stats.</small></button>
+      </div>
+      <button class="primary" style="margin-top:10px" data-v12-action="openHub">Open Full EMX City</button>`;
+  }
+
+  function v12Open(title, subtitle, body, eyebrow = "Story World") {
+    v12InstallUI();
+    const overlay = $("v12Overlay");
+    $("v12Eyebrow").textContent = eyebrow;
+    $("v12Title").textContent = title;
+    $("v12Subtitle").textContent = subtitle;
+    $("v12Body").innerHTML = body;
+    overlay.classList.add("show");
+  }
+
+  function v12Close() {
+    const overlay = $("v12Overlay");
+    if (overlay) overlay.classList.remove("show");
+  }
+
+  function v12RenderHub() {
+    const cards = V12_CITY_BUILDINGS.map((b) => `
+      <button class="v12-city-card" data-v12-building="${b.id}">
+        <span class="v12-icon">${b.icon}</span>
+        <strong>${b.title}</strong>
+        <small>${b.desc}</small>
+      </button>`).join("");
+    v12Open("EMX City Hub", "Tap any building. This is the main world map for story, collections, upgrades, mini-games, and multiplayer.", `
+      <div class="v12-instructions">
+        <strong>How to use EMX City</strong>
+        <ol>
+          <li>Tap Story Chapters to learn what to do in each zone.</li>
+          <li>Tap Power Loadouts before a run to choose your skills.</li>
+          <li>Tap Pet Lab, Forge, and Stickers between battles for permanent progress.</li>
+          <li>Tap Neon Tower or Arcade for quick kid-friendly mini-games.</li>
+        </ol>
+      </div>
+      <div class="v12-city-grid">${cards}</div>
+    `, "City Map");
+  }
+
+  function v12RenderStory() {
+    const story = V12_STORIES[v12StoryPointer % V12_STORIES.length];
+    const read = Boolean(v12Meta.storyRead[story.id]);
+    const lineMarkup = story.lines.map(([name, line]) => `
+      <div class="v12-story-scene">
+        <span class="v12-dialogue-name">${v12Escape(name)}</span>
+        <p class="v12-dialogue-line">${v12Escape(line)}</p>
+      </div>`).join("");
+    const chapterButtons = V12_STORIES.map((item, index) => `
+      <button class="v12-tab ${index === v12StoryPointer ? "active" : ""}" data-v12-story-index="${index}">${item.icon} ${index + 1}</button>`).join("");
+    v12Open(story.title, `${story.zone} • Boss: ${story.boss}`, `
+      <div class="v12-tabs">${chapterButtons}</div>
+      <div class="v12-story-card">
+        <h3>${story.icon} ${story.zone}</h3>
+        <p class="v12-hint">${story.reward}</p>
+      </div>
+      ${lineMarkup}
+      <div class="v12-choice-grid" style="margin-top:10px">
+        <button class="v12-choice-card" data-v12-action="markStory"><strong>${read ? "Reread Complete" : "Mark Chapter Read"}</strong><small>Rewards 10 crystals the first time.</small></button>
+        <button class="v12-choice-card" data-v12-building="campaign"><strong>Open Campaign Map</strong><small>Select this zone if unlocked, then pick a class below.</small></button>
+        <button class="v12-choice-card" data-v12-action="nextStory"><strong>Next Chapter</strong><small>Move to the next story scene.</small></button>
+      </div>
+    `, "Story Chapters");
+  }
+
+  function v12RenderTower() {
+    v12EnsureTowerEnemy();
+    const tower = v12Meta.tower;
+    const enemy = tower.enemy;
+    const hpPct = clamp((tower.hp / tower.maxHp) * 100, 0, 100);
+    const enemyPct = clamp((enemy.hp / enemy.maxHp) * 100, 0, 100);
+    v12Open("Neon Tower", "Climb floors for tickets, crystals, stickers, and profile badges. Tap Attack, Guard, or Power.", `
+      <div class="v12-tower-stats">
+        <div class="v12-profile-card"><strong>Floor</strong><small>${tower.floor}</small></div>
+        <div class="v12-profile-card"><strong>Best</strong><small>${tower.bestFloor}</small></div>
+        <div class="v12-profile-card"><strong>Tickets</strong><small>${v12Meta.tickets} 🎟️</small></div>
+        <div class="v12-profile-card"><strong>Shield</strong><small>${tower.shield || 0}</small></div>
+      </div>
+      <div class="v12-tower-card">
+        <div class="v12-tower-enemy">${enemy.icon}</div>
+        <h3>${enemy.boss ? "👑 " : ""}${enemy.name}</h3>
+        <p class="v12-hint">Enemy HP ${enemy.hp}/${enemy.maxHp}</p>
+        <div class="v12-meter"><div class="v12-meter-fill" style="width:${enemyPct}%"></div></div>
+        <p class="v12-hint">Your HP ${tower.hp}/${tower.maxHp}</p>
+        <div class="v12-meter"><div class="v12-meter-fill" style="width:${hpPct}%"></div></div>
+        <div class="v12-tower-actions">
+          <button data-v12-tower="attack">⚔️ Attack</button>
+          <button data-v12-tower="guard">🛡️ Guard</button>
+          <button data-v12-tower="power">✨ Power</button>
+        </div>
+      </div>
+      <div class="v12-story-card"><strong>Tower Log</strong><p class="v12-hint">${tower.log.slice(-4).map(v12Escape).join("<br>")}</p></div>
+      <div class="v12-choice-grid">
+        <button class="v12-choice-card" data-v12-tower="reset"><strong>Reset Tower Run</strong><small>Start at floor 1 with full HP.</small></button>
+        <button class="v12-choice-card" data-v12-action="profile"><strong>View Profile</strong><small>See tower stats and badges.</small></button>
+      </div>
+    `, "Challenge Mode");
+  }
+
+  function v12EnsureTowerEnemy() {
+    const tower = v12Meta.tower;
+    if (!tower.enemy || tower.enemy.hp <= 0) {
+      const base = V12_TOWER_ENEMIES[(tower.floor - 1) % V12_TOWER_ENEMIES.length];
+      const boss = tower.floor % 5 === 0 || base.boss;
+      const scale = 1 + tower.floor * 0.16;
+      tower.enemy = {
+        id: `${base.name}-${tower.floor}`,
+        icon: boss ? (base.icon || "👑") : base.icon,
+        name: boss ? `Boss ${base.name}` : base.name,
+        maxHp: Math.round(base.hp * scale + (boss ? 45 : 0)),
+        hp: Math.round(base.hp * scale + (boss ? 45 : 0)),
+        atk: Math.round(base.atk * scale + (boss ? 5 : 0)),
+        boss
+      };
+    }
+    if (!tower.maxHp) tower.maxHp = 110;
+    if (!tower.hp || tower.hp <= 0) tower.hp = tower.maxHp;
+  }
+
+  function v12TowerAction(action) {
+    v12EnsureTowerEnemy();
+    const tower = v12Meta.tower;
+    const enemy = tower.enemy;
+    if (action === "reset") {
+      v12Meta.tower = { floor: 1, bestFloor: tower.bestFloor || 0, hp: 110 + v12Meta.pet.level * 2, maxHp: 110 + v12Meta.pet.level * 2, shield: 0, enemy: null, log: ["Tower run reset."] };
+      v12SaveMeta();
+      return v12RenderTower();
+    }
+    let damage = 0;
+    if (action === "attack") damage = rand(17, 27) + Math.floor(v12Meta.pet.level / 2);
+    if (action === "guard") {
+      tower.shield = (tower.shield || 0) + rand(18, 28) + v12Meta.pet.level;
+      tower.log.push("You raised a tower shield.");
+    }
+    if (action === "power") {
+      damage = rand(26, 42) + v12Meta.pet.level;
+      if (Math.random() < 0.22 + v12Meta.pet.mood / 600) {
+        damage += rand(8, 18);
+        tower.log.push(`${v12Pet().name} used ${v12Pet().trick}!`);
+      }
+    }
+    if (damage) {
+      enemy.hp = clamp(enemy.hp - damage, 0, enemy.maxHp);
+      tower.log.push(`You dealt ${damage} damage.`);
+    }
+    if (enemy.hp <= 0) {
+      const floor = tower.floor;
+      const crystalGain = enemy.boss ? 16 + floor : 5 + Math.floor(floor / 2);
+      const ticketGain = (enemy.boss ? 7 : 3) + (v12ActiveEvent()?.id === "arcadeWeekend" ? 2 : 0);
+      tower.floor += 1;
+      tower.bestFloor = Math.max(tower.bestFloor || 0, floor);
+      tower.enemy = null;
+      tower.hp = clamp(tower.hp + 18, 1, tower.maxHp);
+      tower.log.push(`Floor ${floor} cleared!`);
+      v12Meta.stats.towerWins += 1;
+      v12PetGain(enemy.boss ? 10 : 5, enemy.boss ? 4 : 2);
+      v12UnlockSticker(enemy.boss ? "bosses" : "enemies", enemy.name, enemy.name);
+      v12Reward({ crystals: crystalGain, tickets: ticketGain, message: `Tower floor ${floor} cleared.` });
+      v12SaveMeta();
+      return v12RenderTower();
+    }
+    const incoming = Math.max(1, enemy.atk + rand(-3, 4));
+    const blocked = Math.min(tower.shield || 0, incoming);
+    tower.shield = Math.max(0, (tower.shield || 0) - blocked);
+    const real = incoming - blocked;
+    tower.hp = clamp(tower.hp - real, 0, tower.maxHp);
+    tower.log.push(`${enemy.name} hit for ${real}${blocked ? ` (${blocked} blocked)` : ""}.`);
+    if (tower.hp <= 0) {
+      tower.log.push("You were knocked from the tower. Reset and try again.");
+      v12Meta.stats.defeats += 1;
+      v12PetGain(2, -4);
+    }
+    v12SaveMeta();
+    v12RenderTower();
+  }
+
+  function v12RenderPetLab() {
+    const pet = v12Pet();
+    const xpNeed = v12PetXpToLevel();
+    const xpPct = clamp((v12Meta.pet.xp / xpNeed) * 100, 0, 100);
+    v12Open("Pet Lab", "Feed, train, and play. Happy pets improve your runs and tower climbs.", `
+      <div class="v12-pet-card">
+        <div class="v12-pet-hero">
+          <div class="v12-pet-avatar">${pet.icon}</div>
+          <div>
+            <h3>${pet.name}</h3>
+            <p class="v12-hint">${pet.desc}</p>
+            <p class="v12-hint">Trick: <strong>${pet.trick}</strong> • Level ${v12Meta.pet.level} • Mood ${v12Meta.pet.mood}% • Food ${v12Meta.pet.food}</p>
+            <div class="v12-meter"><div class="v12-meter-fill" style="width:${xpPct}%"></div></div>
+            <p class="v12-small-muted">XP ${v12Meta.pet.xp}/${xpNeed}</p>
+          </div>
+        </div>
+      </div>
+      <div class="v12-pet-actions">
+        <button class="v12-action" data-v12-pet="feed"><strong>🍖 Feed</strong><small>Uses 1 food. Mood +12 and XP +7.</small></button>
+        <button class="v12-action" data-v12-pet="train"><strong>🥋 Train</strong><small>XP +12. Mood -4 because training is work.</small></button>
+        <button class="v12-action" data-v12-pet="play"><strong>🎾 Play</strong><small>Mood +10 and XP +4.</small></button>
+        <button class="v12-action" data-v12-pet="snack"><strong>🎟️ Buy Food</strong><small>Spend 4 tickets for 2 pet food.</small></button>
+      </div>
+      <h3 style="margin-top:14px">Choose Companion</h3>
+      <div class="v12-choice-grid">
+        ${V12_PETS.map((p) => `<button class="v12-choice-card ${p.id === v12Meta.pet.id ? "selected" : ""}" data-v12-pet-pick="${p.id}"><span class="v12-icon">${p.icon}</span><strong>${p.name}</strong><small>${p.desc}</small></button>`).join("")}
+      </div>
+    `, "Companion System");
+  }
+
+  function v12PetAction(action) {
+    if (action === "feed") {
+      if (v12Meta.pet.food <= 0) return v12Toast("No pet food. Buy food with tickets or earn more rewards.");
+      v12Meta.pet.food -= 1;
+      v12PetGain(7, 12);
+      v12Meta.stats.petActions += 1;
+      v12Toast(`${v12Pet().name} loved the snack.`);
+    }
+    if (action === "train") {
+      v12PetGain(12, -4);
+      v12Meta.pet.training += 1;
+      v12Meta.stats.petActions += 1;
+      v12Toast(`${v12Pet().name} practiced ${v12Pet().trick}.`);
+    }
+    if (action === "play") {
+      v12PetGain(4, 10);
+      v12Meta.pet.play += 1;
+      v12Meta.stats.petActions += 1;
+      v12Toast(`${v12Pet().name} is happier.`);
+    }
+    if (action === "snack") {
+      if (v12Meta.tickets < 4) return v12Toast("Need 4 tickets to buy pet food.");
+      v12Meta.tickets -= 4;
+      v12Meta.pet.food += 2;
+      v12Toast("Bought 2 pet food.");
+    }
+    v12SaveMeta();
+    v12RenderPetLab();
+  }
+
+  function v12RenderLoadout(classKey = v12Meta.favoriteClass || "flame") {
+    const classData = CLASS_DATA[classKey];
+    const selected = v12NormalizeLoadout(classKey, v12Meta.loadouts[classKey]);
+    const tabs = Object.entries(CLASS_DATA).map(([key, data]) => `<button class="v12-tab ${key === classKey ? "active" : ""}" data-v12-loadout-class="${key}">${data.icon} ${data.name}</button>`).join("");
+    const cards = Object.entries(classData.powers).map(([key, power]) => {
+      const isRequired = V12_REQUIRED_POWERS.includes(key);
+      const isSelected = selected.includes(key);
+      return `<button class="v12-loadout-card ${isSelected ? "selected" : ""} ${isRequired ? "required" : ""}" data-v12-loadout-toggle="${key}" data-class="${classKey}" ${isRequired ? "disabled" : ""}>
+        <strong>${power.icon} ${power.label}</strong>
+        <small>${power.desc}<br>${isRequired ? "Required core power" : isSelected ? "Selected" : "Tap to add"} • ${power.unlock ? `Unlock Lv ${power.unlock}` : "Always available"}</small>
+      </button>`;
+    }).join("");
+    v12Open("Power Loadouts", "Choose up to 6 powers. Basic, Guard, Heal, and Ultimate stay equipped so new players always have safe options.", `
+      <div class="v12-tabs">${tabs}</div>
+      <div class="v12-story-card"><strong>${classData.icon} ${classData.name}</strong><p class="v12-hint">Selected ${selected.length}/${V12_MAX_LOADOUT}: ${selected.map((id) => classData.powers[id]?.label).filter(Boolean).join(", ")}</p></div>
+      <div class="v12-loadout-grid">${cards}</div>
+      <button class="v12-primary" style="margin-top:10px;width:100%" data-v12-action="saveLoadout" data-class="${classKey}">Save Loadout</button>
+    `, "Build Strategy");
+  }
+
+  function v12ToggleLoadout(classKey, powerKey) {
+    const selected = v12NormalizeLoadout(classKey, v12Meta.loadouts[classKey]);
+    if (V12_REQUIRED_POWERS.includes(powerKey)) return;
+    const index = selected.indexOf(powerKey);
+    if (index >= 0) selected.splice(index, 1);
+    else {
+      if (selected.length >= V12_MAX_LOADOUT) return v12Toast(`Only ${V12_MAX_LOADOUT} powers can be equipped.`);
+      selected.push(powerKey);
+    }
+    v12Meta.loadouts[classKey] = v12NormalizeLoadout(classKey, selected);
+    v12SaveMeta();
+    v12RenderLoadout(classKey);
+  }
+
+  function v12RenderStickers(tab = "enemies") {
+    const tabs = ["enemies", "bosses", "zones", "classes", "pets", "powers"].map((id) => `<button class="v12-tab ${id === tab ? "active" : ""}" data-v12-sticker-tab="${id}">${id[0].toUpperCase() + id.slice(1)}</button>`).join("");
+    let items = [];
+    if (tab === "enemies") items = (ENEMIES || []).map((e) => ({ id: e.id || e.name, icon: e.icon, name: e.name, hint: "Defeat this enemy in arena, campaign, or tower." }));
+    if (tab === "bosses") items = (BOSSES || []).map((e) => ({ id: e.id || e.name, icon: e.icon, name: e.name, hint: "Defeat this boss or a tower boss." }));
+    if (tab === "zones") items = V12_STORIES.map((z) => ({ id: z.id, icon: z.icon, name: z.zone, hint: z.reward }));
+    if (tab === "classes") items = Object.entries(CLASS_DATA).map(([id, c]) => ({ id, icon: c.icon, name: c.name, hint: "Start a run with this class." }));
+    if (tab === "pets") items = V12_PETS.map((p) => ({ id: p.id, icon: p.icon, name: p.name, hint: p.desc }));
+    if (tab === "powers") items = Object.entries(CLASS_DATA).flatMap(([classKey, c]) => Object.entries(c.powers).map(([id, p]) => ({ id: `${classKey}-${id}`, icon: p.icon, name: p.label, hint: `${c.name}: ${p.desc}` })));
+    const cards = items.map((item) => {
+      const unlocked = Boolean(v12Meta.stickers[tab]?.[item.id]);
+      return `<div class="v12-sticker ${unlocked ? "" : "locked"}">
+        <span class="v12-sticker-icon">${unlocked ? item.icon : "❔"}</span>
+        <strong>${unlocked ? v12Escape(item.name) : "Locked Sticker"}</strong>
+        <small>${unlocked ? v12Escape(item.hint) : "Play more to discover this sticker."}</small>
+        <span class="v12-sticker-tag">${unlocked ? "Collected" : "Missing"}</span>
+      </div>`;
+    }).join("");
+    v12Open("Sticker Book 2.0", "Collect enemies, bosses, zones, classes, pets, and powers. Kids can see what they have found and what to chase next.", `
+      <div class="v12-tabs">${tabs}</div>
+      <div class="v12-sticker-grid">${cards}</div>
+    `, "Collection");
+  }
+
+  function v12RenderEvents() {
+    const active = v12ActiveEvent();
+    const week = v12WeekKey();
+    const claimed = Boolean(v12Meta.weeklyClaims[`${week}-${active.id}`]);
+    const cards = V12_WEEKLY_EVENTS.map((event) => `<div class="v12-event-card ${event.id === active.id ? "active" : ""}"><span class="v12-icon">${event.icon}</span><strong>${event.title}</strong><small>${event.desc}<br>${event.buff}</small></div>`).join("");
+    v12Open("Weekly Events", "One event is active each week. It changes rewards and gives the game a fresh goal.", `
+      <div class="v12-warning-card">
+        <h3>${active.icon} Active: ${active.title}</h3>
+        <p class="v12-hint">${active.buff}</p>
+        <button class="v12-primary" data-v12-action="claimWeekly" ${claimed ? "disabled" : ""}>${claimed ? "Weekly Reward Claimed" : "Claim Weekly Reward"}</button>
+      </div>
+      <div class="v12-event-grid">${cards}</div>
+    `, "Live Events");
+  }
+
+  function v12ClaimWeekly() {
+    const active = v12ActiveEvent();
+    const key = `${v12WeekKey()}-${active.id}`;
+    if (v12Meta.weeklyClaims[key]) return v12Toast("Weekly reward already claimed.");
+    v12Meta.weeklyClaims[key] = true;
+    v12Meta.stats.weeklyRewards += 1;
+    if (active.id === "petRescue") v12Meta.pet.food += 3;
+    v12Reward({ crystals: 35, tickets: active.id === "arcadeWeekend" ? 8 : 4, message: `${active.title} reward claimed.` });
+    v12SaveMeta();
+    v12RenderEvents();
+  }
+
+  function v12RenderProfile() {
+    const event = v12ActiveEvent();
+    const pet = v12Pet();
+    const stickerCount = Object.values(v12Meta.stickers).reduce((sum, group) => sum + Object.keys(group || {}).length, 0);
+    const badges = [];
+    if (v12Meta.tower.bestFloor >= 5) badges.push("🗼 Tower Climber");
+    if (v12Meta.stats.bosses >= 1) badges.push("👑 Boss Breaker");
+    if (stickerCount >= 10) badges.push("📒 Collector");
+    if (v12Meta.pet.level >= 5) badges.push("🐾 Pet Buddy");
+    if (v12Meta.stats.weeklyRewards >= 1) badges.push("📅 Event Player");
+    const stats = [
+      ["Runs", v12Meta.stats.runs], ["Wins", v12Meta.stats.wins], ["Bosses", v12Meta.stats.bosses], ["Tower Best", v12Meta.tower.bestFloor],
+      ["Choices", v12Meta.stats.choices], ["Boss Counters", v12Meta.stats.bossCounters], ["Stickers", stickerCount], ["Tickets", v12Meta.tickets]
+    ].map(([label, value]) => `<div class="v12-profile-card"><strong>${value}</strong><small>${label}</small></div>`).join("");
+    v12Open("Player Profile Card", "Customize your name and show your favorite class, pet, badges, and progress.", `
+      <div class="v12-profile-top">
+        <div class="v12-profile-avatar">${pet.icon}</div>
+        <div>
+          <h3>${v12Escape(v12Meta.playerName)}</h3>
+          <p class="v12-hint">Favorite class: ${CLASS_DATA[v12Meta.favoriteClass]?.icon || "⚔️"} ${CLASS_DATA[v12Meta.favoriteClass]?.name || "Hero"}<br>Pet: ${pet.name} Lv ${v12Meta.pet.level}<br>Event: ${event.icon} ${event.title}</p>
+          <div class="v12-name-row">
+            <input id="v12NameInput" value="${v12Escape(v12Meta.playerName)}" maxlength="18" placeholder="Player name" />
+            <button class="v12-secondary" data-v12-action="saveName">Save</button>
+          </div>
+        </div>
+      </div>
+      <h3>Stats</h3>
+      <div class="v12-profile-grid">${stats}</div>
+      <h3 style="margin-top:14px">Badges</h3>
+      <div class="v12-story-card"><p class="v12-hint">${badges.length ? badges.join(" • ") : "No badges yet. Clear tower floors, defeat bosses, collect stickers, and play events."}</p></div>
+      <h3>Favorite Class</h3>
+      <div class="v12-choice-grid">
+        ${Object.entries(CLASS_DATA).map(([key, c]) => `<button class="v12-choice-card" data-v12-favorite-class="${key}"><span class="v12-icon">${c.icon}</span><strong>${c.name}</strong><small>${key === v12Meta.favoriteClass ? "Current favorite" : "Set as favorite"}</small></button>`).join("")}
+      </div>
+    `, "Profile");
+  }
+
+  function v12RenderChoiceRoom(room = choice(V12_CHOICE_ROOMS), resume = null) {
+    v12ChoiceActive = room;
+    v12ChoiceResume = resume;
+    const choices = room.choices.map((item) => `
+      <button class="v12-choice-card" data-v12-choice="${item.id}">
+        <strong>${item.label}</strong>
+        <small>${item.desc}</small>
+      </button>`).join("");
+    const content = $("v12ChoiceContent");
+    if (!content) return;
+    content.innerHTML = `
+      <div class="v12-modal-header">
+        <div>
+          <p class="eyebrow">Interactive Choice</p>
+          <h2>${room.icon} ${room.title}</h2>
+          <p class="v12-hint">${room.text}</p>
+        </div>
+        <button class="v12-close" data-v12-choice-close="1">✕</button>
+      </div>
+      <div class="v12-choice-grid">${choices}</div>`;
+    $("v12ChoiceRoom").classList.add("show");
+  }
+
+  function v12CloseChoiceRoom(continueRun = true) {
+    const room = $("v12ChoiceRoom");
+    if (room) room.classList.remove("show");
+    const resume = v12ChoiceResume;
+    v12ChoiceResume = null;
+    v12ChoiceActive = null;
+    if (continueRun && resume) resume();
+  }
+
+  function v12ApplyChoice(id) {
+    const room = v12ChoiceActive;
+    if (!room) return;
+    const item = room.choices.find((choiceItem) => choiceItem.id === id);
+    if (!item) return;
+    try { item.apply(); } catch (error) { v12Toast("Choice applied."); }
+    v12Meta.stats.choices += 1;
+    v12SaveMeta();
+    v12CloseChoiceRoom(true);
+  }
+
+  function v12MaybeShowChoice(resume) {
+    if (!state || state.phase === "gameover" || state.phase === "upgrade") return false;
+    const wave = Number(state.wave || 1);
+    const isBossWave = wave % 5 === 0;
+    if (isBossWave || wave < 2) return false;
+    state.v12 = state.v12 || {};
+    const key = `wave-${wave}`;
+    if (state.v12.choiceShown?.[key]) return false;
+    const chance = wave % 3 === 0 ? 0.55 : 0.18;
+    if (Math.random() > chance) return false;
+    state.v12.choiceShown = state.v12.choiceShown || {};
+    state.v12.choiceShown[key] = true;
+    v12RenderChoiceRoom(choice(V12_CHOICE_ROOMS), resume);
+    return true;
+  }
+
+  function v12BossBanner(title, text) {
+    const box = $("v12BossWarning");
+    const titleEl = $("v12BossWarningTitle");
+    const textEl = $("v12BossWarningText");
+    if (!box || !titleEl || !textEl) return;
+    titleEl.textContent = title;
+    textEl.textContent = text;
+    box.classList.add("show");
+    clearTimeout(v12BossBanner.timer);
+    v12BossBanner.timer = setTimeout(() => box.classList.remove("show"), 5200);
+  }
+
+  function v12CheckBossPhases() {
+    if (!state?.enemy || !(state.enemy.isBoss || state.enemy.isMiniBoss || state.enemy.v7ZoneFinal)) return;
+    const enemy = state.enemy;
+    const pct = enemy.maxHp ? enemy.hp / enemy.maxHp : 1;
+    enemy.v12Phases = enemy.v12Phases || {};
+    if (pct <= 0.72 && !enemy.v12Phases.phase2) {
+      enemy.v12Phases.phase2 = true;
+      enemy.shield = (enemy.shield || 0) + 18;
+      enemy.v12NextHeavy = true;
+      v12BossBanner("Boss Phase 2", `${enemy.name} raised a shield and is charging. Guard, heal, stun, freeze, or root now.`);
+      if (typeof addLog === "function") addLog(`⚠️ ${enemy.name} entered Phase 2: shield + charged attack.`);
+    }
+    if (pct <= 0.42 && !enemy.v12Phases.phase3) {
+      enemy.v12Phases.phase3 = true;
+      enemy.v12WeaknessTurns = 2;
+      enemy.v12NextHeavy = false;
+      v12BossBanner("Weakness Window", `${enemy.name} is dizzy. Attack now for bonus damage!`);
+      if (typeof addLog === "function") addLog(`💫 ${enemy.name} is dizzy. Bonus damage for 2 turns.`);
+    }
+    if (pct <= 0.2 && !enemy.v12Phases.enrage) {
+      enemy.v12Phases.enrage = true;
+      enemy.v12NextHeavy = true;
+      v12BossBanner("Final Phase", `${enemy.name} is enraged. Use shield or ultimate to finish safely.`);
+      if (typeof addLog === "function") addLog(`🔥 ${enemy.name} entered final phase.`);
+    }
+  }
+
+  function v12CurrentLoadout() {
+    if (!state?.classKey) return null;
+    return v12NormalizeLoadout(state.classKey, v12Meta.loadouts[state.classKey]);
+  }
+
+  function v12PowerAllowed(key) {
+    const loadout = v12CurrentLoadout();
+    if (!loadout) return true;
+    return loadout.includes(key);
+  }
+
+  function v12ApplyEventAndPetBuffs(targetState) {
+    if (!targetState || targetState.v12BuffsApplied) return targetState;
+    targetState.v12BuffsApplied = true;
+    const pet = v12Pet();
+    const moodScale = 0.7 + v12Meta.pet.mood / 100;
+    targetState.player.maxHp += Math.round(v12Meta.pet.level * moodScale);
+    targetState.player.hp = targetState.player.maxHp;
+    targetState.mods.ultGain = (targetState.mods.ultGain || 0) + Math.floor(v12Meta.pet.level / 3);
+    targetState.v12PetId = pet.id;
+    targetState.v12PetLevel = v12Meta.pet.level;
+    targetState.v12Event = v12ActiveEvent().id;
+    if (v12ActiveEvent().id === "fireWeek" && targetState.classKey === "flame") targetState.mods.specialDamage += 6;
+    if (typeof addLog === "function") addLog(`${pet.name} joined the run. Weekly event: ${v12ActiveEvent().title}.`);
+    return targetState;
+  }
+
+  function v12PetAssistDuringAttack(key, power) {
+    if (!state || !state.enemy || state.enemy.hp <= 0) return;
+    const pet = v12Pet();
+    const chance = clamp(0.06 + v12Meta.pet.level * 0.008 + v12Meta.pet.mood / 800, 0.06, 0.35);
+    if (Math.random() > chance) return;
+    if (pet.id === "neonDrake") {
+      const dmg = 5 + v12Meta.pet.level;
+      damageEnemy(dmg);
+      addStatus?.(state.enemy, { type: "burn", turns: 2, damage: 3 + Math.floor(v12Meta.pet.level / 3) });
+      if (typeof addLog === "function") addLog(`${pet.name} breathed neon fire.`);
+    } else if (pet.id === "spiritFox") {
+      healTarget?.(state.player, 8 + v12Meta.pet.level, true);
+      if (typeof addLog === "function") addLog(`${pet.name} patched you up.`);
+    } else if (pet.id === "shieldBot") {
+      state.player.shield += 8 + v12Meta.pet.level;
+      if (typeof addLog === "function") addLog(`${pet.name} added emergency shield.`);
+    } else if (pet.id === "lootGoblin") {
+      state.coins += 3 + Math.floor(v12Meta.pet.level / 2);
+      if (typeof addLog === "function") addLog(`${pet.name} found coins mid-fight.`);
+    } else if (pet.id === "voidSprite") {
+      state.player.ult = clamp(state.player.ult + 6 + Math.floor(v12Meta.pet.level / 2), 0, state.player.maxUlt);
+      if (typeof addLog === "function") addLog(`${pet.name} sparked your ultimate meter.`);
+    }
+  }
+
+  function v12OpenBuilding(id) {
+    if (id === "story") return v12RenderStory();
+    if (id === "tower") return v12RenderTower();
+    if (id === "pet") return v12RenderPetLab();
+    if (id === "loadout") return v12RenderLoadout(v12Meta.favoriteClass);
+    if (id === "stickers") return v12RenderStickers("enemies");
+    if (id === "events") return v12RenderEvents();
+    if (id === "profile") return v12RenderProfile();
+    if (id === "choices") return v12RenderChoiceRoom(choice(V12_CHOICE_ROOMS), null);
+    if (id === "campaign") return v12ExternalClick('[data-v7-action="openMap"]', "Campaign Map is available after the game panels load.");
+    if (id === "forge") return v12ExternalClick('[data-v11-action="forge"]', "Gear Forge is on the Guide + Adventure panel.");
+    if (id === "arcade") return v12ExternalClick('[data-v10-action="arcade"]', "Arcade is available after the game panels load.");
+    if (id === "multiplayer") {
+      window.location.href = "multiplayer.html";
+      return;
+    }
+  }
+
+  function v12RefreshCityPanel() {
+    const panel = $("v12CityPanel");
+    if (panel) panel.innerHTML = v12RenderCityPanel();
+  }
+
+  function v12PatchGame() {
+    if (window.__emxV12Patched) return;
+    window.__emxV12Patched = true;
+
+    const oldMakeState = makeState;
+    makeState = function v12MakeStatePatched(classKey) {
+      const result = oldMakeState(classKey);
+      result.v12 = result.v12 || { choiceShown: {}, bossPhases: {} };
+      v12Meta.stats.runs += 1;
+      v12Meta.favoriteClass = classKey;
+      v12UnlockSticker("classes", classKey, CLASS_DATA[classKey]?.name || classKey);
+      v12ApplyEventAndPetBuffs(result);
+      v12SaveMeta();
+      return result;
+    };
+
+    const oldStartFight = startFight;
+    startFight = function v12StartFightPatched() {
+      if (v12MaybeShowChoice(() => {
+        oldStartFight();
+        setTimeout(v12CheckBossPhases, 120);
+      })) return;
+      oldStartFight();
+      setTimeout(v12CheckBossPhases, 120);
+    };
+
+    const oldStartPlayerTurn = startPlayerTurn;
+    startPlayerTurn = function v12StartPlayerTurnPatched() {
+      const result = oldStartPlayerTurn();
+      if (state?.enemy?.v12WeaknessTurns) state.enemy.v12WeaknessTurns -= 1;
+      setTimeout(v12CheckBossPhases, 120);
+      return result;
+    };
+
+    const oldUsePower = usePower;
+    usePower = async function v12UsePowerPatched(key) {
+      if (state?.phase === "player" && !v12PowerAllowed(key)) {
+        v12Toast("That power is not in your current loadout. Open Power Loadouts in EMX City.");
+        return;
+      }
+      if (state?.phase === "player") {
+        const power = getPower(key);
+        if (power) v12UnlockSticker("powers", `${state.classKey}-${key}`, power.label);
+        if (state?.enemy?.v12NextHeavy && ["guard", "heal", "ultimate"].includes(key)) {
+          state.enemy.v12NextHeavy = false;
+          state.enemy.v12Countered = true;
+          v12Meta.stats.bossCounters += 1;
+          v12Reward({ crystals: v12ActiveEvent().id === "bossRush" ? 8 : 3, message: "Boss warning countered." });
+        }
+      }
+      const result = await oldUsePower(key);
+      try { v12PetAssistDuringAttack(key, getPower(key)); } catch (error) {}
+      v12CheckBossPhases();
+      return result;
+    };
+
+    const oldDamageEnemy = damageEnemy;
+    damageEnemy = function v12DamageEnemyPatched(amount) {
+      let finalAmount = amount;
+      if (state?.enemy?.v12WeaknessTurns > 0) finalAmount = Math.round(finalAmount * 1.35);
+      if (state?.enemy && v12ActiveEvent().id === "fireWeek") {
+        const enemyStatus = state.enemy.statuses?.some((s) => s.type === "burn");
+        if (enemyStatus) finalAmount = Math.round(finalAmount * 1.12);
+      }
+      return oldDamageEnemy(finalAmount);
+    };
+
+    const oldChooseEnemyMove = chooseEnemyMove;
+    chooseEnemyMove = function v12ChooseEnemyMovePatched() {
+      const move = oldChooseEnemyMove();
+      if (state?.enemy?.v12NextHeavy && move && Number(move.damage || 0) > 0) {
+        move.name = `Charged ${move.name}`;
+        move.damage = Math.round(move.damage * (state.enemy.v12Countered ? 0.62 : 1.12));
+        state.enemy.v12Countered = false;
+        state.enemy.v12NextHeavy = false;
+      }
+      return move;
+    };
+
+    const oldWinFight = winFight;
+    winFight = function v12WinFightPatched() {
+      const defeated = state?.enemy ? { ...state.enemy } : null;
+      oldWinFight();
+      v12Meta.stats.wins += 1;
+      if (defeated) {
+        const type = defeated.isBoss || defeated.isMiniBoss || defeated.v7ZoneFinal ? "bosses" : "enemies";
+        v12UnlockSticker(type, defeated.id || defeated.name, defeated.name);
+        if (type === "bosses") v12Meta.stats.bosses += 1;
+      }
+      const event = v12ActiveEvent();
+      if (event.id === "crystalStorm") v12Reward({ crystals: 2, message: "Crystal Storm bonus." });
+      if (event.id === "petRescue") v12PetGain(3, 2);
+      v12SaveMeta();
+      v12RefreshCityPanel();
+    };
+
+    const oldGameOver = gameOver;
+    gameOver = function v12GameOverPatched() {
+      v12Meta.stats.defeats += 1;
+      v12SaveMeta();
+      return oldGameOver();
+    };
+
+    const oldRender = render;
+    render = function v12RenderPatched() {
+      oldRender();
+      v12InstallUI();
+      const versionChip = document.querySelector(".version-chip");
+      if (versionChip) versionChip.textContent = V12_UPDATE_NAME;
+      const loadout = v12CurrentLoadout();
+      if (loadout) {
+        document.querySelectorAll(".action-btn").forEach((button) => {
+          const key = button.dataset.power;
+          if (key && !loadout.includes(key)) {
+            button.disabled = true;
+            const power = getPower(key);
+            button.innerHTML = `<strong>🔒 ${power?.label || key}</strong><small>Not in loadout.<br>Open EMX City → Power Loadouts.</small>`;
+          }
+        });
+      }
+      v12RefreshCityPanel();
+    };
+  }
+
+  function v12WireEvents() {
+    if (v12WireEvents.done) return;
+    v12WireEvents.done = true;
+    document.addEventListener("click", (event) => {
+      const actionEl = event.target.closest("[data-v12-action]");
+      const buildingEl = event.target.closest("[data-v12-building]");
+      const towerEl = event.target.closest("[data-v12-tower]");
+      const petEl = event.target.closest("[data-v12-pet]");
+      const petPickEl = event.target.closest("[data-v12-pet-pick]");
+      const storyEl = event.target.closest("[data-v12-story-index]");
+      const choiceEl = event.target.closest("[data-v12-choice]");
+      const choiceCloseEl = event.target.closest("[data-v12-choice-close]");
+      const loadoutClassEl = event.target.closest("[data-v12-loadout-class]");
+      const loadoutToggleEl = event.target.closest("[data-v12-loadout-toggle]");
+      const stickerTabEl = event.target.closest("[data-v12-sticker-tab]");
+      const favoriteClassEl = event.target.closest("[data-v12-favorite-class]");
+
+      if (buildingEl) return v12OpenBuilding(buildingEl.dataset.v12Building);
+      if (towerEl) return v12TowerAction(towerEl.dataset.v12Tower);
+      if (petEl) return v12PetAction(petEl.dataset.v12Pet);
+      if (petPickEl) {
+        v12Meta.pet.id = petPickEl.dataset.v12PetPick;
+        v12UnlockSticker("pets", v12Meta.pet.id, v12Pet().name);
+        v12SaveMeta();
+        return v12RenderPetLab();
+      }
+      if (storyEl) {
+        v12StoryPointer = Number(storyEl.dataset.v12StoryIndex || 0);
+        return v12RenderStory();
+      }
+      if (choiceEl) return v12ApplyChoice(choiceEl.dataset.v12Choice);
+      if (choiceCloseEl) return v12CloseChoiceRoom(true);
+      if (loadoutClassEl) return v12RenderLoadout(loadoutClassEl.dataset.v12LoadoutClass);
+      if (loadoutToggleEl) return v12ToggleLoadout(loadoutToggleEl.dataset.class, loadoutToggleEl.dataset.v12LoadoutToggle);
+      if (stickerTabEl) return v12RenderStickers(stickerTabEl.dataset.v12StickerTab);
+      if (favoriteClassEl) {
+        v12Meta.favoriteClass = favoriteClassEl.dataset.v12FavoriteClass;
+        v12SaveMeta();
+        return v12RenderProfile();
+      }
+      if (!actionEl) return;
+      const action = actionEl.dataset.v12Action;
+      if (action === "close") return v12Close();
+      if (action === "openHub") return v12RenderHub();
+      if (action === "story") return v12RenderStory();
+      if (action === "tower") return v12RenderTower();
+      if (action === "pet") return v12RenderPetLab();
+      if (action === "loadout") return v12RenderLoadout(v12Meta.favoriteClass);
+      if (action === "stickers") return v12RenderStickers("enemies");
+      if (action === "events") return v12RenderEvents();
+      if (action === "profile") return v12RenderProfile();
+      if (action === "nextStory") { v12StoryPointer = (v12StoryPointer + 1) % V12_STORIES.length; return v12RenderStory(); }
+      if (action === "markStory") {
+        const story = V12_STORIES[v12StoryPointer % V12_STORIES.length];
+        const first = !v12Meta.storyRead[story.id];
+        v12Meta.storyRead[story.id] = true;
+        v12Meta.stats.storyReads += first ? 1 : 0;
+        v12UnlockSticker("zones", story.id, story.zone);
+        if (first) v12Reward({ crystals: 10, message: `${story.zone} chapter read.` });
+        v12SaveMeta();
+        return v12RenderStory();
+      }
+      if (action === "saveLoadout") {
+        const classKey = actionEl.dataset.class || v12Meta.favoriteClass;
+        v12Meta.loadouts[classKey] = v12NormalizeLoadout(classKey, v12Meta.loadouts[classKey]);
+        v12Meta.stats.loadoutSaves += 1;
+        v12SaveMeta();
+        v12Toast("Loadout saved. Start a new run or continue with equipped powers.");
+        return v12RenderLoadout(classKey);
+      }
+      if (action === "claimWeekly") return v12ClaimWeekly();
+      if (action === "saveName") {
+        const input = $("v12NameInput");
+        const value = input ? input.value.trim().slice(0, 18) : "";
+        v12Meta.playerName = value || "EMX Player";
+        v12SaveMeta();
+        v12Toast("Profile name saved.");
+        return v12RenderProfile();
+      }
+    });
+  }
+
+  v12InstallUI();
+  v12WireEvents();
+  v12PatchGame();
+  v12SaveMeta();
+
+  setTimeout(() => {
+    v12InstallUI();
+    v12RefreshCityPanel();
+    if (typeof render === "function" && state) render();
+  }, 650);
+})();
