@@ -5631,3 +5631,13 @@ html, body { overscroll-behavior-y: contain; }
 button, a, .class-card { touch-action: manipulation; }
 #bootScreen { pointer-events: auto; }
 #bootScreen.boot-finished { pointer-events: none !important; }
+
+
+/* === EMX Soul Arena v18: remove bottom sound unlock button === */
+#v9SoundWake,
+.v9-sound-wake {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

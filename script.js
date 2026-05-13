@@ -7055,14 +7055,9 @@ v5PatchLabels();
       arena.insertAdjacentElement("afterend", mascot);
     }
 
-    if (!$("v9SoundWake")) {
-      const wake = document.createElement("button");
-      wake.id = "v9SoundWake";
-      wake.className = "v9-sound-wake";
-      wake.textContent = "🔊 Tap to enable game sounds";
-      wake.dataset.v9Action = "unlockSound";
-      document.body.appendChild(wake);
-    }
+    // v18: bottom activate-sounds button removed. Sounds unlock silently from normal taps.
+    const oldWake = $("v9SoundWake");
+    if (oldWake) oldWake.remove();
 
     if (!$("v9SoundOverlay")) {
       document.body.insertAdjacentHTML("beforeend", `
@@ -7189,11 +7184,9 @@ v5PatchLabels();
       const stateText = !V9Sound.enabled() ? "Muted" : V9Sound.unlocked || ctx?.state === "running" ? "Sound Ready" : "Needs Tap";
       status.textContent = `${V9Sound.enabled() ? "🔊" : "🔇"} ${stateText} • Vol ${Math.round(V9Sound.volume() * 100)}%`;
     }
+    // v18: no floating sound wake button.
     const wake = $("v9SoundWake");
-    if (wake) {
-      const ctxReady = V9Sound.unlocked || V9Sound.ctx?.state === "running";
-      wake.classList.toggle("hide", !V9Sound.enabled() || ctxReady);
-    }
+    if (wake) wake.remove();
   }
 
   function v9MascotHint() {

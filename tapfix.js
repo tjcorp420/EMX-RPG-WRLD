@@ -1,11 +1,11 @@
-/* EMX Soul Arena v17 - Stable Tap Router
+/* EMX Soul Arena v18 - Stable Tap Router
    Purpose: keep v15-style reliable buttons, but only activate on a real tap.
    This fixes accidental button presses and tap SFX during scrolling. */
 (function () {
   "use strict";
 
-  if (window.__EMXV17_STABLE_TAPS__) return;
-  window.__EMXV17_STABLE_TAPS__ = true;
+  if (window.__EMXV18_STABLE_TAPS__) return;
+  window.__EMXV18_STABLE_TAPS__ = true;
 
   const d = document;
   const $ = (id) => d.getElementById(id);
@@ -180,6 +180,7 @@
   }
 
   function patchSoundScrollBug() {
+    removeSoundWake();
     const ap = window.EMXAudioPack;
     if (ap && !ap.__emxV17Patched) {
       ap.__emxV17Patched = true;
@@ -200,7 +201,8 @@
 
       if (oldPlay) {
         ap.play = function v17Play(type = "tap") {
-          if (now() < scrollBlockedUntil && String(type || "tap") === "tap") return false;
+          const kind = String(type || "tap");
+          if (now() < scrollBlockedUntil && (kind === "tap" || kind === "unlock")) return false;
           return oldPlay(type);
         };
       }
@@ -213,7 +215,8 @@
       const oldPlay = typeof window.EMXSound.play === "function" ? window.EMXSound.play.bind(window.EMXSound) : null;
       if (oldUnlock) window.EMXSound.unlock = () => Promise.resolve(true);
       if (oldPlay) window.EMXSound.play = (type = "tap") => {
-        if (now() < scrollBlockedUntil && String(type || "tap") === "tap") return false;
+        const kind = String(type || "tap");
+        if (now() < scrollBlockedUntil && (kind === "tap" || kind === "unlock")) return false;
         return oldPlay(type);
       };
     }
@@ -230,6 +233,7 @@
 
   function clearBlockers(forceBoot = false) {
     finishBoot(forceBoot);
+    removeSoundWake();
     const hiddenSelectors = [
       ".overlay.hidden",
       ".v8-overlay.hidden",
@@ -266,6 +270,22 @@
 
     qsa(".effect-layer,.header-pulse,.v11-floating-guide,.v9-mascot,#v17Toast").forEach((el) => {
       el.style.pointerEvents = "none";
+    });
+  }
+
+  function removeSoundWake() {
+    const wake = $("v9SoundWake");
+    if (wake) {
+      try { wake.remove(); } catch (error) {
+        wake.style.display = "none";
+        wake.style.pointerEvents = "none";
+      }
+    }
+    qsa(".v9-sound-wake").forEach((el) => {
+      try { el.remove(); } catch (error) {
+        el.style.display = "none";
+        el.style.pointerEvents = "none";
+      }
     });
   }
 
@@ -382,7 +402,7 @@
         <div class="v15-safe-modal">
           <div class="v15-safe-top">
             <div>
-              <p class="eyebrow">v17 Button Doctor</p>
+              <p class="eyebrow">v18 No Sound Button</p>
               <h2>Stable Menu</h2>
               <p>Use this if any menu acts frozen. This version ignores scroll gestures and only activates real taps.</p>
             </div>
@@ -549,15 +569,15 @@
 
   function installStartCard() {
     const start = $("startScreen");
-    if (!start || $("v17DoctorCard")) return;
+    if (!start || $("v18DoctorCard")) return;
     const card = d.createElement("section");
-    card.id = "v17DoctorCard";
+    card.id = "v18DoctorCard";
     card.className = "v15-restore-card";
     card.innerHTML = `
       <div>
-        <p class="eyebrow">v17 Button Doctor</p>
-        <h2>Scroll-safe buttons restored</h2>
-        <p>Buttons activate on real taps only. Swiping over buttons should not play click sounds or open random tabs.</p>
+        <p class="eyebrow">v18 No Sound Button</p>
+        <h2>Sound button removed</h2>
+        <p>The bottom sound unlock button is removed. Sounds work automatically after real taps, and scrolling should stay quiet.</p>
       </div>
       <div class="v15-restore-grid">
         <button data-v17-action="stable">Stable Menu</button>
@@ -578,14 +598,15 @@
   }
 
   function markVersion() {
-    qsa(".version-chip").forEach((chip) => { chip.textContent = "v17 Button Doctor"; });
+    qsa(".version-chip").forEach((chip) => { chip.textContent = "v18 No Sound Button"; });
     const subtitle = d.querySelector(".brand-title-card .subtitle");
     if (subtitle && /v1[0-9]/i.test(subtitle.textContent || "")) {
-      subtitle.textContent = "v17 Button Doctor: loading screen, working buttons, and no accidental click sounds while scrolling.";
+      subtitle.textContent = "v18 No Sound Button: loading screen, working buttons, and no accidental click sounds while scrolling.";
     }
   }
 
   function boot() {
+    removeSoundWake();
     patchSoundScrollBug();
     installStartCard();
     styleButtons();
@@ -593,13 +614,14 @@
     clearBlockers(false);
     setTimeout(() => finishBoot(false), 3400);
     setInterval(() => {
+      removeSoundWake();
       patchSoundScrollBug();
       installStartCard();
       styleButtons();
       markVersion();
       clearBlockers(false);
     }, 1200);
-    setTimeout(() => toast("v17 button doctor loaded"), 1600);
+    setTimeout(() => toast("v18 no-sound-button fix loaded"), 1600);
   }
 
   // Pointer/touch events are used only to detect a completed tap. No action happens on pointerdown.
