@@ -9459,7 +9459,7 @@ v5PatchLabels();
    and player profile card.
    ============================================================ */
 (function () {
-  const V12_UPDATE_NAME = "Story World Update";
+  const V12_UPDATE_NAME = "Button Hotfix + Story World";
   const V12_META_KEY = "emxSoulArenaMeta_v12";
   const V12_REQUIRED_POWERS = ["basic", "guard", "heal", "ultimate"];
   const V12_MAX_LOADOUT = 6;
@@ -10345,9 +10345,9 @@ v5PatchLabels();
   }
 
   function v12PowerAllowed(key) {
-    const loadout = v12CurrentLoadout();
-    if (!loadout) return true;
-    return loadout.includes(key);
+    // V13 hotfix: loadouts are now a guide/preference, not a hard lock.
+    // This prevents attack buttons from feeling broken when a power is not selected.
+    return true;
   }
 
   function v12ApplyEventAndPetBuffs(targetState) {
@@ -10523,17 +10523,8 @@ v5PatchLabels();
       v12InstallUI();
       const versionChip = document.querySelector(".version-chip");
       if (versionChip) versionChip.textContent = V12_UPDATE_NAME;
-      const loadout = v12CurrentLoadout();
-      if (loadout) {
-        document.querySelectorAll(".action-btn").forEach((button) => {
-          const key = button.dataset.power;
-          if (key && !loadout.includes(key)) {
-            button.disabled = true;
-            const power = getPower(key);
-            button.innerHTML = `<strong>🔒 ${power?.label || key}</strong><small>Not in loadout.<br>Open EMX City → Power Loadouts.</small>`;
-          }
-        });
-      }
+      // V13 hotfix: do not disable battle buttons because of loadout.
+      // Loadouts still save on the profile screen, but powers remain tappable when unlocked.
       v12RefreshCityPanel();
     };
   }
@@ -10620,6 +10611,23 @@ v5PatchLabels();
     });
   }
 
+  // V13 hotfix: expose the Story World panels so a safety click handler can recover
+  // even if a browser misses one of the original delegated events.
+  window.EMXV12 = {
+    openHub: v12RenderHub,
+    story: v12RenderStory,
+    tower: v12RenderTower,
+    pet: v12RenderPetLab,
+    loadout: () => v12RenderLoadout(v12Meta.favoriteClass),
+    stickers: () => v12RenderStickers("enemies"),
+    events: v12RenderEvents,
+    profile: v12RenderProfile,
+    close: v12Close,
+    choiceClose: v12CloseChoiceRoom,
+    toast: v12Toast,
+    refreshCityPanel: v12RefreshCityPanel
+  };
+
   v12InstallUI();
   v12WireEvents();
   v12PatchGame();
@@ -10630,4 +10638,159 @@ v5PatchLabels();
     v12RefreshCityPanel();
     if (typeof render === "function" && state) render();
   }, 650);
+})();
+
+
+/* === EMX Soul Arena v13: Button Hotfix / Tap-Safe UI Update === */
+(function () {
+  if (window.__emxV13ButtonHotfix) return;
+  window.__emxV13ButtonHotfix = true;
+
+  const q = (sel) => document.querySelector(sel);
+  const qa = (sel) => Array.from(document.querySelectorAll(sel));
+  const log = (msg) => {
+    try {
+      if (window.EMXV12?.toast) window.EMXV12.toast(msg);
+      else console.log("EMX:", msg);
+    } catch (error) {
+      console.log("EMX:", msg);
+    }
+  };
+
+  // Make sure the boot screen never traps taps if Safari pauses a timer.
+  setTimeout(() => {
+    const boot = q("#bootScreen");
+    if (boot) boot.remove();
+  }, 3200);
+
+  // Mark the version chip so users know the hotfix deployed.
+  function markVersion() {
+    qa(".version-chip").forEach((chip) => {
+      chip.textContent = "v13 Button Hotfix";
+    });
+  }
+  markVersion();
+  setInterval(markVersion, 2500);
+
+  // Re-enable action buttons that were only disabled by the old loadout lock.
+  function unlockLoadoutOnlyButtons() {
+    qa(".action-btn").forEach((button) => {
+      const txt = (button.textContent || "").toLowerCase();
+      if (txt.includes("not in loadout") || txt.includes("open emx city")) {
+        button.disabled = false;
+        const key = button.dataset.power;
+        try {
+          if (typeof getPower === "function") {
+            const power = getPower(key);
+            if (power) {
+              const costText = power.ultCost ? `ULT ${power.ultCost}` : `Mana ${power.cost}`;
+              button.innerHTML = `<strong>${power.icon} ${power.label}</strong><small>${power.desc}<br>${costText}</small>`;
+            }
+          }
+        } catch (error) {}
+      }
+    });
+  }
+  setInterval(unlockLoadoutOnlyButtons, 700);
+
+  // Safety fallback for core game buttons. It only fires if the regular click did not change screens/state.
+  document.addEventListener("click", (event) => {
+    const classCard = event.target.closest(".class-card[data-class]");
+    const actionBtn = event.target.closest(".action-btn[data-power]");
+    const v12Action = event.target.closest("[data-v12-action]");
+    const v12Building = event.target.closest("[data-v12-building]");
+
+    if (classCard) {
+      const classKey = classCard.dataset.class;
+      const wasOnStart = !q("#startScreen")?.classList.contains("hidden");
+      setTimeout(() => {
+        const stillOnStart = !q("#startScreen")?.classList.contains("hidden");
+        if (wasOnStart && stillOnStart && typeof startNewRun === "function") {
+          startNewRun(classKey);
+          log("Started run with button hotfix.");
+        }
+      }, 120);
+      return;
+    }
+
+    if (actionBtn) {
+      const power = actionBtn.dataset.power;
+      const beforePhase = window.state?.phase || (typeof state !== "undefined" && state ? state.phase : null);
+      setTimeout(() => {
+        try {
+          if (typeof state !== "undefined" && state?.phase === "player" && beforePhase === "player" && typeof usePower === "function") {
+            // Only force it if the button is visible and it still looks tappable.
+            if (!actionBtn.disabled) usePower(power);
+          }
+        } catch (error) {}
+      }, 120);
+      return;
+    }
+
+    // Recovery for Story World buttons if the original delegated handler missed the tap.
+    if (v12Action) {
+      const action = v12Action.dataset.v12Action;
+      setTimeout(() => {
+        try {
+          if (!window.EMXV12) return;
+          if (action === "openHub") return window.EMXV12.openHub();
+          if (action === "story") return window.EMXV12.story();
+          if (action === "tower") return window.EMXV12.tower();
+          if (action === "pet") return window.EMXV12.pet();
+          if (action === "loadout") return window.EMXV12.loadout();
+          if (action === "stickers") return window.EMXV12.stickers();
+          if (action === "events") return window.EMXV12.events();
+          if (action === "profile") return window.EMXV12.profile();
+          if (action === "close") return window.EMXV12.close();
+        } catch (error) {}
+      }, 140);
+      return;
+    }
+
+    if (v12Building) {
+      const building = v12Building.dataset.v12Building;
+      setTimeout(() => {
+        try {
+          if (!window.EMXV12) return;
+          if (building === "story") return window.EMXV12.story();
+          if (building === "tower") return window.EMXV12.tower();
+          if (building === "pet") return window.EMXV12.pet();
+          if (building === "loadout") return window.EMXV12.loadout();
+          if (building === "stickers") return window.EMXV12.stickers();
+          if (building === "events") return window.EMXV12.events();
+          if (building === "profile") return window.EMXV12.profile();
+          if (building === "multiplayer") window.location.href = "multiplayer.html";
+        } catch (error) {}
+      }, 140);
+    }
+  }, true);
+
+  // Small helper panel on the start screen, so players know buttons were fixed.
+  function installHotfixCard() {
+    if (q("#v13HotfixCard")) return;
+    const start = q("#startScreen");
+    if (!start) return;
+    const card = document.createElement("section");
+    card.id = "v13HotfixCard";
+    card.className = "v13-hotfix-card";
+    card.innerHTML = `
+      <div>
+        <p class="eyebrow">v13 Tap Fix</p>
+        <h2>Buttons are tap-safe now</h2>
+        <p>Power Loadouts no longer hard-lock your attack buttons. Use EMX City for strategy, then tap any unlocked power in battle.</p>
+      </div>
+      <button class="primary" data-v12-action="openHub">Open EMX City</button>
+    `;
+    start.insertBefore(card, start.querySelector(".class-grid") || null);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installHotfixCard);
+  } else {
+    installHotfixCard();
+  }
+
+  window.addEventListener("error", (event) => {
+    console.warn("EMX caught script error:", event.message);
+  });
 })();
