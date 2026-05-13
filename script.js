@@ -10695,6 +10695,7 @@ v5PatchLabels();
 
   // Safety fallback for core game buttons. It only fires if the regular click did not change screens/state.
   document.addEventListener("click", (event) => {
+    if (window.__emxV16IgnoreClick?.(event)) return;
     const classCard = event.target.closest(".class-card[data-class]");
     const actionBtn = event.target.closest(".action-btn[data-power]");
     const v12Action = event.target.closest("[data-v12-action]");
