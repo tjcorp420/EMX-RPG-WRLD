@@ -5378,3 +5378,2106 @@ v5PatchLabels();
   v7SaveMeta();
   v7PatchLabels();
 })();
+
+/* =========================================================
+   EMX Soul Arena v8 - Collection / Skins / Pets / Contracts
+   Adds: skin locker, companion pets, summon portal, contracts,
+   season pass rewards, promo codes, pet assists, and profile UI.
+   ========================================================= */
+(() => {
+  const V8_META_KEY = "emxSoulArenaCollection_v1";
+  const V8_DATE_KEY = () => new Date().toISOString().slice(0, 10);
+
+  const V8_SKINS = [
+    {
+      id: "flame_default",
+      classKey: "flame",
+      title: "Classic Flame Mage",
+      icon: "🧙‍♂️",
+      rarity: "Common",
+      desc: "Original EMX fire caster look.",
+      ownedDefault: true
+    },
+    {
+      id: "flame_phoenix",
+      classKey: "flame",
+      title: "Phoenix Warlock",
+      icon: "🔥",
+      rarity: "Epic",
+      desc: "+6 fire damage, +10 max HP, and a hotter battle look.",
+      effect(st) {
+        st.player.maxHp += 10;
+        st.player.hp += 10;
+        st.mods.fireDamage = (st.mods.fireDamage || 0) + 6;
+        st.mods.statusDamage = (st.mods.statusDamage || 0) + 1;
+      }
+    },
+    {
+      id: "flame_neon",
+      classKey: "flame",
+      title: "Neon Inferno King",
+      icon: "🌋",
+      rarity: "Legendary",
+      desc: "+10 fire damage and +10 ultimate gain.",
+      effect(st) {
+        st.mods.fireDamage = (st.mods.fireDamage || 0) + 10;
+        st.mods.ultGain = (st.mods.ultGain || 0) + 10;
+      }
+    },
+    {
+      id: "rogue_default",
+      classKey: "rogue",
+      title: "Classic Shadow Rogue",
+      icon: "🥷",
+      rarity: "Common",
+      desc: "Original assassin look.",
+      ownedDefault: true
+    },
+    {
+      id: "rogue_cyber",
+      classKey: "rogue",
+      title: "Cyber Ninja",
+      icon: "🤖",
+      rarity: "Epic",
+      desc: "+10% crit chance and +1 combo gain.",
+      effect(st) {
+        st.mods.critBonus = (st.mods.critBonus || 0) + 0.1;
+        st.mods.comboGain = (st.mods.comboGain || 0) + 1;
+      }
+    },
+    {
+      id: "rogue_void",
+      classKey: "rogue",
+      title: "Void Reaper",
+      icon: "🕷️",
+      rarity: "Legendary",
+      desc: "+9 shadow damage and crits can give shield.",
+      effect(st) {
+        st.mods.shadowDamage = (st.mods.shadowDamage || 0) + 9;
+        st.mods.critShield = (st.mods.critShield || 0) + 5;
+      }
+    },
+    {
+      id: "storm_default",
+      classKey: "storm",
+      title: "Classic Storm Knight",
+      icon: "⚔️",
+      rarity: "Common",
+      desc: "Original knight look.",
+      ownedDefault: true
+    },
+    {
+      id: "storm_mech",
+      classKey: "storm",
+      title: "Mech Paladin",
+      icon: "🦾",
+      rarity: "Epic",
+      desc: "+18 starting shield and +4 lightning damage.",
+      effect(st) {
+        st.mods.startShield = (st.mods.startShield || 0) + 18;
+        st.mods.lightningDamage = (st.mods.lightningDamage || 0) + 4;
+      }
+    },
+    {
+      id: "storm_titan",
+      classKey: "storm",
+      title: "Titan Slayer",
+      icon: "🛡️",
+      rarity: "Legendary",
+      desc: "+8 boss damage and +8% damage reduction.",
+      effect(st) {
+        st.mods.bossDamage = (st.mods.bossDamage || 0) + 8;
+        st.mods.damageReduction = (st.mods.damageReduction || 0) + 0.08;
+      }
+    },
+    {
+      id: "nature_default",
+      classKey: "nature",
+      title: "Classic Nature Healer",
+      icon: "🧝",
+      rarity: "Common",
+      desc: "Original healer look.",
+      ownedDefault: true
+    },
+    {
+      id: "nature_crystal",
+      classKey: "nature",
+      title: "Crystal Sage",
+      icon: "💎",
+      rarity: "Epic",
+      desc: "+12 max mana, +7 healing, and stronger support.",
+      effect(st) {
+        st.player.maxMana += 12;
+        st.player.mana += 12;
+        st.mods.healBonus = (st.mods.healBonus || 0) + 7;
+      }
+    },
+    {
+      id: "nature_plague",
+      classKey: "nature",
+      title: "Plague Bloom",
+      icon: "🍄",
+      rarity: "Legendary",
+      desc: "+9 poison/nature damage and poison leech.",
+      effect(st) {
+        st.mods.natureDamage = (st.mods.natureDamage || 0) + 9;
+        st.mods.poisonLeech = (st.mods.poisonLeech || 0) + 0.05;
+      }
+    }
+  ];
+
+  const V8_PETS = [
+    {
+      id: "none",
+      title: "No Companion",
+      icon: "—",
+      rarity: "Common",
+      desc: "Run solo.",
+      ownedDefault: true
+    },
+    {
+      id: "neonDrake",
+      title: "Neon Drake",
+      icon: "🐉",
+      rarity: "Epic",
+      desc: "35% chance after attacks to blast the enemy. +3 status damage.",
+      passive(st) {
+        st.mods.statusDamage = (st.mods.statusDamage || 0) + 3;
+      },
+      assist: { type: "damage", chance: 0.35, damage: 18, label: "Neon Drake breath" }
+    },
+    {
+      id: "shieldBot",
+      title: "Shield Bot",
+      icon: "🛸",
+      rarity: "Rare",
+      desc: "Start fights with extra shield. Sometimes adds emergency shield.",
+      passive(st) {
+        st.mods.startShield = (st.mods.startShield || 0) + 18;
+        st.mods.damageReduction = (st.mods.damageReduction || 0) + 0.04;
+      },
+      assist: { type: "shield", chance: 0.25, shield: 16, label: "Shield Bot barrier" }
+    },
+    {
+      id: "spiritFox",
+      title: "Spirit Fox",
+      icon: "🦊",
+      rarity: "Rare",
+      desc: "+7% crit chance. Sometimes heals after you use a power.",
+      passive(st) {
+        st.mods.critBonus = (st.mods.critBonus || 0) + 0.07;
+      },
+      assist: { type: "heal", chance: 0.28, heal: 14, label: "Spirit Fox blessing" }
+    },
+    {
+      id: "voidSprite",
+      title: "Void Sprite",
+      icon: "👾",
+      rarity: "Legendary",
+      desc: "Boosts ultimate gain and sometimes fires a void burst.",
+      passive(st) {
+        st.mods.ultGain = (st.mods.ultGain || 0) + 8;
+        st.mods.ignoreDefenseChance = (st.mods.ignoreDefenseChance || 0) + 0.08;
+      },
+      assist: { type: "damage", chance: 0.27, damage: 28, label: "Void Sprite burst" }
+    },
+    {
+      id: "lootGoblin",
+      title: "Loot Goblin",
+      icon: "👺",
+      rarity: "Epic",
+      desc: "+18% coin rewards and a small chest chance after wins.",
+      passive(st) {
+        st.mods.v8CoinBoost = (st.mods.v8CoinBoost || 0) + 0.18;
+      },
+      assist: { type: "damage", chance: 0.18, damage: 12, label: "Loot Goblin cheap shot" }
+    }
+  ];
+
+  const V8_CONTRACT_DEFS = [
+    { id: "wins5", title: "Win 5 Battles", desc: "Win any 5 fights.", type: "wins", goal: 5, crystals: 35, seasonXp: 110 },
+    { id: "boss1", title: "Break a Boss", desc: "Defeat 1 boss or final zone enemy.", type: "bosses", goal: 1, crystals: 45, chest: "boss", seasonXp: 140 },
+    { id: "ult3", title: "Ultimate Showcase", desc: "Use 3 ultimate attacks.", type: "ultimates", goal: 3, crystals: 30, seasonXp: 100 },
+    { id: "open2", title: "Open 2 Chests", desc: "Open any 2 reward chests.", type: "chestsOpened", goal: 2, crystals: 30, seasonXp: 90 },
+    { id: "spend100", title: "Shop Spender", desc: "Spend 100 coins in shops.", type: "coinsSpent", goal: 100, crystals: 40, seasonXp: 115 },
+    { id: "upgrade3", title: "Build Crafter", desc: "Choose 3 upgrade cards.", type: "upgrades", goal: 3, crystals: 25, seasonXp: 85 }
+  ];
+
+  const V8_PASS_REWARDS = [
+    { level: 1, text: "25 💎", crystals: 25 },
+    { level: 2, text: "Neon Chest", chest: "neon" },
+    { level: 3, text: "50 💎", crystals: 50 },
+    { level: 4, text: "Boss Chest", chest: "boss" },
+    { level: 5, text: "Skin Chest", chest: "skin" },
+    { level: 6, text: "75 💎", crystals: 75 },
+    { level: 7, text: "Companion Chest", chest: "pet" },
+    { level: 8, text: "100 💎", crystals: 100 },
+    { level: 9, text: "Legendary Neon Chest", chest: "legend" },
+    { level: 10, text: "EMX Mythic Chest", chest: "mythic" }
+  ];
+
+  const V8_CODES = {
+    EMXLAUNCH: { crystals: 150, chest: "neon", text: "150 crystals + Neon Chest" },
+    SOULARENA: { crystals: 100, chest: "boss", text: "100 crystals + Boss Chest" },
+    NEONPET: { chest: "pet", text: "Companion Chest" }
+  };
+
+  function v8DefaultMeta() {
+    const ownedSkins = {};
+    const equippedSkins = {};
+    for (const skin of V8_SKINS) {
+      if (skin.ownedDefault) {
+        ownedSkins[skin.id] = true;
+        if (skin.classKey) equippedSkins[skin.classKey] = skin.id;
+      }
+    }
+    const ownedPets = { none: true };
+    return {
+      version: 8,
+      crystals: 125,
+      totalCrystals: 125,
+      seasonXp: 0,
+      passClaimed: {},
+      ownedSkins,
+      equippedSkins,
+      ownedPets,
+      equippedPet: "none",
+      chests: { neon: 1, boss: 0, skin: 0, pet: 0, legend: 0, mythic: 0 },
+      dailyChestDate: "",
+      contractsDate: "",
+      contracts: [],
+      codes: {},
+      stats: {
+        runs: 0,
+        wins: 0,
+        bosses: 0,
+        elites: 0,
+        ultimates: 0,
+        chestsOpened: 0,
+        coinsSpent: 0,
+        upgrades: 0,
+        skinsUnlocked: 0,
+        petsUnlocked: 0
+      },
+      lastReward: "Welcome reward: 125 crystals + 1 Neon Chest"
+    };
+  }
+
+  function v8MakeContracts() {
+    return V8_CONTRACT_DEFS.map((def) => ({
+      id: def.id,
+      type: def.type,
+      title: def.title,
+      desc: def.desc,
+      goal: def.goal,
+      crystals: def.crystals || 0,
+      seasonXp: def.seasonXp || 0,
+      chest: def.chest || null,
+      progress: 0,
+      claimed: false
+    }));
+  }
+
+  function v8EnsureMeta(meta) {
+    const base = v8DefaultMeta();
+    const merged = { ...base, ...(meta || {}) };
+    merged.stats = { ...base.stats, ...(meta?.stats || {}) };
+    merged.chests = { ...base.chests, ...(meta?.chests || {}) };
+    merged.ownedSkins = { ...base.ownedSkins, ...(meta?.ownedSkins || {}) };
+    merged.equippedSkins = { ...base.equippedSkins, ...(meta?.equippedSkins || {}) };
+    merged.ownedPets = { ...base.ownedPets, ...(meta?.ownedPets || {}) };
+    merged.codes = { ...(meta?.codes || {}) };
+    merged.passClaimed = { ...(meta?.passClaimed || {}) };
+    if (!Array.isArray(merged.contracts)) merged.contracts = [];
+    if (merged.contractsDate !== V8_DATE_KEY() || merged.contracts.length === 0) {
+      merged.contractsDate = V8_DATE_KEY();
+      merged.contracts = v8MakeContracts();
+    }
+    if (!merged.equippedPet || !v8PetById(merged.equippedPet)) merged.equippedPet = "none";
+    for (const skin of V8_SKINS) {
+      if (skin.ownedDefault) merged.ownedSkins[skin.id] = true;
+      if (skin.ownedDefault && skin.classKey && !merged.equippedSkins[skin.classKey]) merged.equippedSkins[skin.classKey] = skin.id;
+    }
+    merged.ownedPets.none = true;
+    return merged;
+  }
+
+  let v8Meta = v8LoadMeta();
+  let v8OpenTabName = "profile";
+
+  function v8LoadMeta() {
+    try {
+      const raw = localStorage.getItem(V8_META_KEY);
+      return v8EnsureMeta(raw ? JSON.parse(raw) : v8DefaultMeta());
+    } catch (error) {
+      return v8EnsureMeta(v8DefaultMeta());
+    }
+  }
+
+  function v8SaveMeta() {
+    v8Meta = v8EnsureMeta(v8Meta);
+    localStorage.setItem(V8_META_KEY, JSON.stringify(v8Meta));
+  }
+
+  function v8SkinById(id) {
+    return V8_SKINS.find((skin) => skin.id === id);
+  }
+
+  function v8PetById(id) {
+    return V8_PETS.find((pet) => pet.id === id);
+  }
+
+  function v8RarityClass(rarity) {
+    return String(rarity || "Common").toLowerCase();
+  }
+
+  function v8SeasonLevel() {
+    return Math.max(1, Math.floor((v8Meta.seasonXp || 0) / 100) + 1);
+  }
+
+  function v8SeasonProgress() {
+    return clamp(v8Meta.seasonXp % 100, 0, 100);
+  }
+
+  function v8AddCrystals(amount, source = "Reward") {
+    const gain = Math.max(0, Math.round(amount || 0));
+    if (!gain) return;
+    v8Meta.crystals += gain;
+    v8Meta.totalCrystals += gain;
+    v8Meta.lastReward = `${source}: +${gain} crystals`;
+    v8Toast(`💎 +${gain} crystals`);
+  }
+
+  function v8SpendCrystals(amount) {
+    const cost = Math.max(0, Math.round(amount || 0));
+    if (v8Meta.crystals < cost) {
+      v8Toast("Not enough EMX Crystals.");
+      return false;
+    }
+    v8Meta.crystals -= cost;
+    return true;
+  }
+
+  function v8AddSeasonXp(amount, source = "Season XP") {
+    const gain = Math.max(0, Math.round(amount || 0));
+    if (!gain) return;
+    v8Meta.seasonXp += gain;
+    v8Meta.lastReward = `${source}: +${gain} Season XP`;
+  }
+
+  function v8AddChest(type = "neon", amount = 1) {
+    v8Meta.chests[type] = (v8Meta.chests[type] || 0) + Math.max(1, amount);
+    v8Meta.lastReward = `Chest added: ${v8ChestLabel(type)}`;
+    v8Toast(`🎁 ${v8ChestLabel(type)} added`);
+  }
+
+  function v8ChestLabel(type) {
+    const labels = {
+      neon: "Neon Chest",
+      boss: "Boss Chest",
+      skin: "Skin Chest",
+      pet: "Companion Chest",
+      legend: "Legendary Chest",
+      mythic: "Mythic Chest"
+    };
+    return labels[type] || "Chest";
+  }
+
+  function v8Track(type, amount = 1) {
+    const gain = Math.max(0, Math.round(amount || 0));
+    if (!gain) return;
+    v8Meta.stats[type] = (v8Meta.stats[type] || 0) + gain;
+    for (const contract of v8Meta.contracts) {
+      if (contract.type === type && !contract.claimed) {
+        contract.progress = clamp((contract.progress || 0) + gain, 0, contract.goal);
+      }
+    }
+  }
+
+  function v8UnlockSkin(id, source = "Unlock") {
+    const skin = v8SkinById(id);
+    if (!skin) return "Unknown skin";
+    if (v8Meta.ownedSkins[id]) {
+      v8AddCrystals(v8DuplicateValue(skin.rarity), "Duplicate skin");
+      return `Duplicate ${skin.title} converted to crystals.`;
+    }
+    v8Meta.ownedSkins[id] = true;
+    v8Meta.stats.skinsUnlocked += 1;
+    v8Meta.lastReward = `${source}: ${skin.title}`;
+    return `Unlocked skin: ${skin.icon} ${skin.title}.`;
+  }
+
+  function v8UnlockPet(id, source = "Unlock") {
+    const pet = v8PetById(id);
+    if (!pet) return "Unknown companion";
+    if (v8Meta.ownedPets[id]) {
+      v8AddCrystals(v8DuplicateValue(pet.rarity), "Duplicate companion");
+      return `Duplicate ${pet.title} converted to crystals.`;
+    }
+    v8Meta.ownedPets[id] = true;
+    v8Meta.stats.petsUnlocked += 1;
+    v8Meta.lastReward = `${source}: ${pet.title}`;
+    return `Unlocked companion: ${pet.icon} ${pet.title}.`;
+  }
+
+  function v8DuplicateValue(rarity) {
+    const values = { Common: 8, Rare: 18, Epic: 36, Legendary: 75, Mythic: 130 };
+    return values[rarity] || 15;
+  }
+
+  function v8WeightedPick(pool) {
+    const weights = { Common: 80, Rare: 46, Epic: 24, Legendary: 9, Mythic: 3 };
+    const total = pool.reduce((sum, item) => sum + (weights[item.rarity] || 20), 0);
+    let roll = Math.random() * total;
+    for (const item of pool) {
+      roll -= weights[item.rarity] || 20;
+      if (roll <= 0) return item;
+    }
+    return choice(pool);
+  }
+
+  function v8RollChest(type = "neon") {
+    const messages = [];
+    const rareOnly = type === "legend" || type === "mythic";
+    const legendaryBoost = type === "mythic";
+    const includeSkin = type === "skin" || type === "neon" || type === "legend" || type === "mythic";
+    const includePet = type === "pet" || type === "neon" || type === "boss" || type === "legend" || type === "mythic";
+
+    const crystalMin = type === "mythic" ? 80 : type === "legend" ? 50 : type === "boss" ? 35 : 18;
+    const crystalMax = type === "mythic" ? 160 : type === "legend" ? 105 : type === "boss" ? 80 : 55;
+    const crystals = rand(crystalMin, crystalMax);
+    v8AddCrystals(crystals, v8ChestLabel(type));
+    messages.push(`💎 ${crystals} crystals`);
+
+    if (state && Math.random() < 0.75) {
+      const coins = type === "boss" || type === "legend" || type === "mythic" ? rand(80, 180) : rand(30, 90);
+      state.coins = (state.coins || 0) + coins;
+      messages.push(`🪙 ${coins} run coins`);
+      try { addLog(`Collection chest gave +${coins} coins.`); } catch (error) {}
+    }
+
+    const rolls = type === "mythic" ? 3 : type === "legend" || type === "boss" ? 2 : 1;
+    for (let i = 0; i < rolls; i++) {
+      const choosePet = includePet && (!includeSkin || Math.random() < 0.48);
+      if (choosePet) {
+        let pool = V8_PETS.filter((pet) => pet.id !== "none");
+        if (rareOnly) pool = pool.filter((pet) => ["Epic", "Legendary", "Mythic"].includes(pet.rarity));
+        if (legendaryBoost && Math.random() < 0.35) pool = pool.filter((pet) => ["Legendary", "Mythic"].includes(pet.rarity));
+        const pet = v8WeightedPick(pool.length ? pool : V8_PETS.filter((pet) => pet.id !== "none"));
+        messages.push(v8UnlockPet(pet.id, v8ChestLabel(type)));
+      } else if (includeSkin) {
+        let pool = V8_SKINS.filter((skin) => !skin.ownedDefault);
+        if (rareOnly) pool = pool.filter((skin) => ["Epic", "Legendary", "Mythic"].includes(skin.rarity));
+        if (legendaryBoost && Math.random() < 0.35) pool = pool.filter((skin) => ["Legendary", "Mythic"].includes(skin.rarity));
+        const skin = v8WeightedPick(pool.length ? pool : V8_SKINS.filter((skin) => !skin.ownedDefault));
+        messages.push(v8UnlockSkin(skin.id, v8ChestLabel(type)));
+      }
+    }
+
+    v8Track("chestsOpened", 1);
+    v8AddSeasonXp(type === "mythic" ? 90 : type === "legend" ? 70 : type === "boss" ? 55 : 35, "Chest opened");
+    v8Meta.lastReward = messages.join(" • ");
+    v8SaveMeta();
+    v8FlashReward();
+    v8RenderHubStats();
+    v8RenderOpenTab();
+    if (typeof render === "function") render();
+    return messages;
+  }
+
+  function v8OpenChest(type) {
+    if ((v8Meta.chests[type] || 0) <= 0) {
+      v8Toast(`No ${v8ChestLabel(type)} available.`);
+      return;
+    }
+    v8Meta.chests[type] -= 1;
+    const messages = v8RollChest(type);
+    v8Toast(`Opened ${v8ChestLabel(type)}!`);
+    try { addLog(`Chest reward: ${messages[0] || "loot"}`); } catch (error) {}
+  }
+
+  function v8BuyChest(type, cost) {
+    if (!v8SpendCrystals(cost)) return;
+    v8AddChest(type, 1);
+    v8SaveMeta();
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8ClaimDailyChest() {
+    const today = V8_DATE_KEY();
+    if (v8Meta.dailyChestDate === today) {
+      v8Toast("Daily chest already claimed.");
+      return;
+    }
+    v8Meta.dailyChestDate = today;
+    v8AddChest("neon", 1);
+    v8AddCrystals(25, "Daily login");
+    v8AddSeasonXp(50, "Daily login");
+    v8SaveMeta();
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8ClaimContract(id) {
+    const contract = v8Meta.contracts.find((item) => item.id === id);
+    if (!contract || contract.claimed || (contract.progress || 0) < contract.goal) return;
+    contract.claimed = true;
+    v8AddCrystals(contract.crystals || 0, contract.title);
+    v8AddSeasonXp(contract.seasonXp || 0, contract.title);
+    if (contract.chest) v8AddChest(contract.chest, 1);
+    v8SaveMeta();
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8ClaimPassReward(level) {
+    const reward = V8_PASS_REWARDS.find((item) => item.level === level);
+    if (!reward || v8Meta.passClaimed[level] || v8SeasonLevel() < level) return;
+    v8Meta.passClaimed[level] = true;
+    if (reward.crystals) v8AddCrystals(reward.crystals, `Season level ${level}`);
+    if (reward.chest) v8AddChest(reward.chest, 1);
+    v8SaveMeta();
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8ClaimAllPassRewards() {
+    for (const reward of V8_PASS_REWARDS) {
+      if (v8SeasonLevel() >= reward.level && !v8Meta.passClaimed[reward.level]) {
+        v8ClaimPassReward(reward.level);
+      }
+    }
+  }
+
+  function v8RedeemCode(raw) {
+    const code = String(raw || "").trim().toUpperCase();
+    if (!code) return;
+    const reward = V8_CODES[code];
+    if (!reward) {
+      v8Toast("Code not found.");
+      return;
+    }
+    if (v8Meta.codes[code]) {
+      v8Toast("Code already redeemed.");
+      return;
+    }
+    v8Meta.codes[code] = true;
+    if (reward.crystals) v8AddCrystals(reward.crystals, `Code ${code}`);
+    if (reward.chest) v8AddChest(reward.chest, 1);
+    v8AddSeasonXp(60, `Code ${code}`);
+    v8SaveMeta();
+    v8Toast(`Redeemed ${code}: ${reward.text}`);
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8EquipSkin(id) {
+    const skin = v8SkinById(id);
+    if (!skin || !v8Meta.ownedSkins[id]) return;
+    v8Meta.equippedSkins[skin.classKey] = id;
+    v8SaveMeta();
+    v8Toast(`Equipped ${skin.title}. Start a new run to apply stats.`);
+    if (state?.classKey === skin.classKey) {
+      state.player.icon = skin.icon;
+      try { render(); } catch (error) {}
+    }
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8EquipPet(id) {
+    const pet = v8PetById(id);
+    if (!pet || !v8Meta.ownedPets[id]) return;
+    v8Meta.equippedPet = id;
+    v8SaveMeta();
+    v8Toast(`Equipped ${pet.title}. Start a new run to apply full passive.`);
+    if (state) state.v8PetId = id;
+    try { render(); } catch (error) {}
+    v8RenderOpenTab();
+    v8RenderHubStats();
+  }
+
+  function v8ApplyLoadoutToState(targetState, classKey) {
+    if (!targetState || targetState.v8LoadoutApplied) return targetState;
+    targetState.mods = { ...defaultMods(), ...(targetState.mods || {}) };
+    targetState.v8LoadoutApplied = true;
+
+    const skin = v8SkinById(v8Meta.equippedSkins?.[classKey]);
+    if (skin && v8Meta.ownedSkins[skin.id]) {
+      targetState.player.icon = skin.icon;
+      targetState.player.name = skin.title;
+      targetState.v8SkinId = skin.id;
+      if (typeof skin.effect === "function") skin.effect(targetState);
+    }
+
+    const pet = v8PetById(v8Meta.equippedPet || "none") || v8PetById("none");
+    targetState.v8PetId = pet.id;
+    if (pet && typeof pet.passive === "function") pet.passive(targetState);
+
+    targetState.player.hp = clamp(targetState.player.hp, 0, targetState.player.maxHp);
+    targetState.player.mana = clamp(targetState.player.mana, 0, targetState.player.maxMana);
+    return targetState;
+  }
+
+  function v8ApplyPetStartFightBuff() {
+    if (!state || !state.v8PetId || state.v8PetId === "none") return;
+    const key = `${state.wave || 0}:${state.enemy?.id || state.enemy?.name || "enemy"}`;
+    if (state.v8PetBuffKey === key) return;
+    state.v8PetBuffKey = key;
+    const pet = v8PetById(state.v8PetId);
+    if (!pet) return;
+    if (pet.id === "shieldBot") {
+      state.player.shield += 12;
+      try { addLog("Shield Bot deployed +12 emergency shield."); } catch (error) {}
+    }
+    if (pet.id === "lootGoblin") {
+      state.player.mana = clamp(state.player.mana + 4, 0, state.player.maxMana);
+    }
+  }
+
+  function v8PetAssist(key, power) {
+    if (!state || !state.enemy || state.enemy.hp <= 0) return;
+    const pet = v8PetById(state.v8PetId || v8Meta.equippedPet || "none");
+    if (!pet || !pet.assist || key === "guard") return;
+    let chance = pet.assist.chance || 0;
+    if (key === "ultimate") chance += 0.18;
+    if (Math.random() > chance) return;
+
+    const assist = pet.assist;
+    if (assist.type === "damage") {
+      const amount = Math.round((assist.damage || 10) + (state.level || 1) * 2 + (state.combo || 0));
+      v8PetEffect("bolt");
+      damageEnemy(amount);
+      addLog(`${pet.icon} ${assist.label} dealt ${amount} damage.`);
+    }
+    if (assist.type === "heal") {
+      const amount = Math.round((assist.heal || 10) + (state.level || 1) * 2);
+      v8PetEffect("heal");
+      healTarget(state.player, amount, true);
+      addLog(`${pet.icon} ${assist.label} healed you.`);
+    }
+    if (assist.type === "shield") {
+      const amount = Math.round((assist.shield || 10) + (state.level || 1));
+      v8PetEffect("shield");
+      state.player.shield += amount;
+      addLog(`${pet.icon} ${assist.label} gave +${amount} shield.`);
+    }
+    v8AddSeasonXp(3, "Companion assist");
+    try { render(); } catch (error) {}
+  }
+
+  function v8PetEffect(type) {
+    const layer = $("effectLayer");
+    if (!layer) return;
+    const item = document.createElement("div");
+    item.className = type === "heal" ? "v8-pet-heal" : type === "shield" ? "v8-pet-shield" : "v8-pet-bolt";
+    layer.appendChild(item);
+    setTimeout(() => item.remove(), 800);
+  }
+
+  function v8Toast(message) {
+    let toast = document.getElementById("v8Toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "v8Toast";
+      toast.className = "v8-toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+
+  function v8FlashReward() {
+    const modal = document.getElementById("v8OverlayModal");
+    if (!modal) return;
+    modal.classList.remove("v8-flash-reward");
+    void modal.offsetWidth;
+    modal.classList.add("v8-flash-reward");
+  }
+
+  function v8InstallUI() {
+    const start = $("startScreen");
+    if (start && !$("v8HubPanel")) {
+      const panel = document.createElement("section");
+      panel.id = "v8HubPanel";
+      panel.className = "v8-hub-panel";
+      panel.innerHTML = `
+        <div class="v8-hub-top">
+          <div>
+            <p class="eyebrow">Collection Update</p>
+            <h3>EMX Locker + Live Rewards</h3>
+          </div>
+          <span id="v8SeasonChip" class="v8-chip hot">Season 1</span>
+        </div>
+        <div id="v8HubStats" class="v8-chip-row"></div>
+        <div class="v8-quick-grid">
+          <button class="v8-quick-btn primary-glow" data-v8-open="portal">🌀 Portal<small>Chests + rewards</small></button>
+          <button class="v8-quick-btn" data-v8-open="skins">🎭 Skins<small>Equip class looks</small></button>
+          <button class="v8-quick-btn" data-v8-open="pets">🐾 Pets<small>Battle companions</small></button>
+          <button class="v8-quick-btn" data-v8-open="contracts">📋 Contracts<small>Daily rewards</small></button>
+        </div>
+      `;
+      const insertAfter = start.querySelector(".brand-title-card") || start.firstElementChild;
+      if (insertAfter) insertAfter.insertAdjacentElement("afterend", panel);
+      else start.prepend(panel);
+    }
+
+    const footer = document.querySelector(".footer-actions");
+    if (footer && !footer.querySelector('[data-v8-open="portal"]')) {
+      const portal = document.createElement("button");
+      portal.className = "small-btn shop";
+      portal.dataset.v8Open = "portal";
+      portal.textContent = "Portal";
+      footer.insertBefore(portal, footer.firstChild?.nextSibling || null);
+      const contracts = document.createElement("button");
+      contracts.className = "small-btn";
+      contracts.dataset.v8Open = "contracts";
+      contracts.textContent = "Contracts";
+      footer.insertBefore(contracts, portal.nextSibling);
+    }
+
+    if (!$("v8Overlay")) {
+      const overlay = document.createElement("section");
+      overlay.id = "v8Overlay";
+      overlay.className = "v8-overlay hidden";
+      overlay.innerHTML = `
+        <div id="v8OverlayModal" class="v8-modal">
+          <div class="v8-modal-top">
+            <div>
+              <p class="eyebrow">EMX Collection</p>
+              <h2 id="v8ModalTitle">Player Profile</h2>
+            </div>
+            <button class="v8-close-btn" data-v8-close="true">✕</button>
+          </div>
+          <div class="v8-tab-row">
+            <button class="v8-tab-btn" data-v8-tab="profile">Profile</button>
+            <button class="v8-tab-btn" data-v8-tab="portal">Portal</button>
+            <button class="v8-tab-btn" data-v8-tab="contracts">Contracts</button>
+            <button class="v8-tab-btn" data-v8-tab="pass">Season</button>
+            <button class="v8-tab-btn" data-v8-tab="skins">Skins</button>
+            <button class="v8-tab-btn" data-v8-tab="pets">Pets</button>
+            <button class="v8-tab-btn" data-v8-tab="codes">Codes</button>
+          </div>
+          <div id="v8Content" class="v8-content"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    if (!window.__emxV8ClickHandlerInstalled) {
+      window.__emxV8ClickHandlerInstalled = true;
+      document.addEventListener("click", v8HandleClick);
+    }
+    v8RenderHubStats();
+    v8RenderRunHud();
+  }
+
+  function v8HandleClick(event) {
+    const openButton = event.target.closest("[data-v8-open]");
+    if (openButton) {
+      v8OpenTab(openButton.dataset.v8Open || "profile");
+      return;
+    }
+
+    const closeButton = event.target.closest("[data-v8-close]");
+    if (closeButton) {
+      $("v8Overlay")?.classList.add("hidden");
+      return;
+    }
+
+    const tabButton = event.target.closest("[data-v8-tab]");
+    if (tabButton) {
+      v8OpenTab(tabButton.dataset.v8Tab || "profile");
+      return;
+    }
+
+    const chestButton = event.target.closest("[data-v8-chest]");
+    if (chestButton) {
+      v8OpenChest(chestButton.dataset.v8Chest);
+      return;
+    }
+
+    const buyChestButton = event.target.closest("[data-v8-buy-chest]");
+    if (buyChestButton) {
+      v8BuyChest(buyChestButton.dataset.v8BuyChest, Number(buyChestButton.dataset.cost || 0));
+      return;
+    }
+
+    const dailyButton = event.target.closest("[data-v8-daily]");
+    if (dailyButton) {
+      v8ClaimDailyChest();
+      return;
+    }
+
+    const claimContract = event.target.closest("[data-v8-claim-contract]");
+    if (claimContract) {
+      v8ClaimContract(claimContract.dataset.v8ClaimContract);
+      return;
+    }
+
+    const claimPass = event.target.closest("[data-v8-claim-pass]");
+    if (claimPass) {
+      v8ClaimPassReward(Number(claimPass.dataset.v8ClaimPass));
+      return;
+    }
+
+    const claimAllPass = event.target.closest("[data-v8-claim-all-pass]");
+    if (claimAllPass) {
+      v8ClaimAllPassRewards();
+      return;
+    }
+
+    const equipSkin = event.target.closest("[data-v8-equip-skin]");
+    if (equipSkin) {
+      v8EquipSkin(equipSkin.dataset.v8EquipSkin);
+      return;
+    }
+
+    const equipPet = event.target.closest("[data-v8-equip-pet]");
+    if (equipPet) {
+      v8EquipPet(equipPet.dataset.v8EquipPet);
+      return;
+    }
+
+    const redeem = event.target.closest("[data-v8-redeem]");
+    if (redeem) {
+      v8RedeemCode($("v8CodeInput")?.value || "");
+    }
+  }
+
+  function v8OpenTab(tab = "profile") {
+    v8OpenTabName = tab;
+    $("v8Overlay")?.classList.remove("hidden");
+    v8RenderOpenTab();
+  }
+
+  function v8RenderOpenTab() {
+    const content = $("v8Content");
+    if (!content) return;
+    const titles = {
+      profile: "Player Profile",
+      portal: "Summon Portal",
+      contracts: "Daily Contracts",
+      pass: "Season Track",
+      skins: "Skin Locker",
+      pets: "Companion Lab",
+      codes: "Promo Codes"
+    };
+    $("v8ModalTitle").textContent = titles[v8OpenTabName] || "EMX Collection";
+    document.querySelectorAll(".v8-tab-btn").forEach((button) => {
+      button.classList.toggle("active", button.dataset.v8Tab === v8OpenTabName);
+    });
+
+    if (v8OpenTabName === "profile") content.innerHTML = v8ProfileHtml();
+    if (v8OpenTabName === "portal") content.innerHTML = v8PortalHtml();
+    if (v8OpenTabName === "contracts") content.innerHTML = v8ContractsHtml();
+    if (v8OpenTabName === "pass") content.innerHTML = v8PassHtml();
+    if (v8OpenTabName === "skins") content.innerHTML = v8SkinsHtml();
+    if (v8OpenTabName === "pets") content.innerHTML = v8PetsHtml();
+    if (v8OpenTabName === "codes") content.innerHTML = v8CodesHtml();
+  }
+
+  function v8RenderHubStats() {
+    const stats = $("v8HubStats");
+    if (stats) {
+      const pet = v8PetById(v8Meta.equippedPet || "none") || v8PetById("none");
+      const ownedSkinCount = Object.values(v8Meta.ownedSkins || {}).filter(Boolean).length;
+      const ownedPetCount = Object.values(v8Meta.ownedPets || {}).filter(Boolean).length - 1;
+      stats.innerHTML = `
+        <span class="v8-chip hot">💎 ${v8Meta.crystals}</span>
+        <span class="v8-chip">🎟 Level ${v8SeasonLevel()}</span>
+        <span class="v8-chip">🎭 ${ownedSkinCount}/${V8_SKINS.length}</span>
+        <span class="v8-chip">🐾 ${Math.max(0, ownedPetCount)}/${V8_PETS.length - 1}</span>
+        <span class="v8-chip">${pet.icon} ${pet.title}</span>
+      `;
+    }
+    const seasonChip = $("v8SeasonChip");
+    if (seasonChip) seasonChip.textContent = `Season ${v8SeasonLevel()} • ${v8SeasonProgress()}%`;
+  }
+
+  function v8RenderRunHud() {
+    const row = $("relicRow");
+    if (!row) return;
+    if (!state || !state.v8PetId || state.v8PetId === "none") return;
+    const pet = v8PetById(state.v8PetId);
+    if (!pet || row.querySelector(".v8-pet-chip")) return;
+    const chip = document.createElement("span");
+    chip.className = "relic-chip v8-pet-chip";
+    chip.textContent = `${pet.icon} ${pet.title}`;
+    row.appendChild(chip);
+
+    const panel = document.querySelector(".player-panel");
+    if (panel && !panel.querySelector(".v8-pet-sprite")) {
+      const petSprite = document.createElement("div");
+      petSprite.className = "v8-pet-sprite";
+      petSprite.textContent = pet.icon;
+      panel.appendChild(petSprite);
+    } else if (panel) {
+      const petSprite = panel.querySelector(".v8-pet-sprite");
+      if (petSprite) petSprite.textContent = pet.icon;
+    }
+  }
+
+  function v8ProfileHtml() {
+    const equipped = Object.entries(v8Meta.equippedSkins || {})
+      .map(([classKey, skinId]) => v8SkinById(skinId))
+      .filter(Boolean);
+    const pet = v8PetById(v8Meta.equippedPet || "none") || v8PetById("none");
+    return `
+      <div class="v8-profile-card">
+        <div class="v8-card-top">
+          <div>
+            <p class="eyebrow">EMX Profile</p>
+            <strong>Collection Rank: ${v8CollectionRank()}</strong>
+            <small>Last reward: ${v8Escape(v8Meta.lastReward || "No reward yet")}</small>
+          </div>
+          <span class="v8-card-icon">🏆</span>
+        </div>
+        <div class="v8-chip-row" style="margin-top:10px">
+          <span class="v8-chip hot">💎 ${v8Meta.crystals}</span>
+          <span class="v8-chip">🎟 Season XP ${v8Meta.seasonXp}</span>
+          <span class="v8-chip">⚔️ Wins ${v8Meta.stats.wins || 0}</span>
+          <span class="v8-chip">👑 Bosses ${v8Meta.stats.bosses || 0}</span>
+          <span class="v8-chip">🎁 Chests ${v8Meta.stats.chestsOpened || 0}</span>
+        </div>
+        <div class="v8-progress-line"><div class="v8-progress-fill" style="width:${v8SeasonProgress()}%"></div></div>
+        <small>Season Level ${v8SeasonLevel()} • ${100 - v8SeasonProgress()} XP to next level</small>
+      </div>
+      <div class="v8-grid" style="margin-top:10px">
+        <div class="v8-card epic">
+          <div class="v8-card-top"><strong>Equipped Companion</strong><span class="v8-card-icon">${pet.icon}</span></div>
+          <small>${v8Escape(pet.title)} — ${v8Escape(pet.desc)}</small>
+          <div class="v8-card-actions"><button data-v8-tab="pets">Change Companion</button></div>
+        </div>
+        <div class="v8-card rare">
+          <div class="v8-card-top"><strong>Equipped Skins</strong><span class="v8-card-icon">🎭</span></div>
+          <small>${equipped.map((skin) => `${skin.icon} ${skin.title}`).join(" • ")}</small>
+          <div class="v8-card-actions"><button data-v8-tab="skins">Open Locker</button></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function v8PortalHtml() {
+    const todayClaimed = v8Meta.dailyChestDate === V8_DATE_KEY();
+    const chestButtons = ["neon", "boss", "skin", "pet", "legend", "mythic"].map((type) => `
+      <button class="v8-portal-btn" data-v8-chest="${type}">
+        ${v8ChestLabel(type)} <small>Owned: ${v8Meta.chests[type] || 0}</small>
+      </button>
+    `).join("");
+    return `
+      <div class="v8-portal-stage"><div class="v8-portal-core"><span>🌀</span></div></div>
+      <div class="v8-chip-row" style="margin-bottom:10px">
+        <span class="v8-chip hot">💎 ${v8Meta.crystals} crystals</span>
+        <span class="v8-chip">🎁 ${Object.values(v8Meta.chests).reduce((a,b)=>a+b,0)} chests</span>
+        <span class="v8-chip">${todayClaimed ? "✅ Daily claimed" : "🎁 Daily ready"}</span>
+      </div>
+      <div class="v8-action-grid" style="margin-bottom:12px">
+        <button class="v8-portal-btn primary-glow" data-v8-daily="true">Daily Free Chest<small>${todayClaimed ? "Come back tomorrow" : "+25 crystals + Neon Chest"}</small></button>
+        <button class="v8-portal-btn" data-v8-buy-chest="neon" data-cost="45">Buy Neon Chest<small>45 crystals</small></button>
+        <button class="v8-portal-btn" data-v8-buy-chest="skin" data-cost="80">Buy Skin Chest<small>80 crystals</small></button>
+        <button class="v8-portal-btn" data-v8-buy-chest="pet" data-cost="80">Buy Pet Chest<small>80 crystals</small></button>
+      </div>
+      <div class="v8-grid">${chestButtons}</div>
+    `;
+  }
+
+  function v8ContractsHtml() {
+    return `
+      <div class="v8-chip-row" style="margin-bottom:10px">
+        <span class="v8-chip hot">Resets daily</span>
+        <span class="v8-chip">💎 Rewards crystals</span>
+        <span class="v8-chip">🎟 Gives season XP</span>
+      </div>
+      <div class="v8-grid">
+        ${v8Meta.contracts.map((contract) => {
+          const done = (contract.progress || 0) >= contract.goal;
+          return `
+            <div class="v8-card ${done ? "rare" : "common"}">
+              <div class="v8-card-top">
+                <strong class="${done ? "v8-contract-done" : ""}">${v8Escape(contract.title)}</strong>
+                <span class="v8-pill ${contract.claimed ? "equipped" : ""}">${contract.claimed ? "Claimed" : `${contract.progress || 0}/${contract.goal}`}</span>
+              </div>
+              <small>${v8Escape(contract.desc)} Reward: ${contract.crystals} 💎${contract.chest ? ` + ${v8ChestLabel(contract.chest)}` : ""}</small>
+              <div class="v8-progress-line"><div class="v8-progress-fill" style="width:${clamp(((contract.progress || 0) / contract.goal) * 100, 0, 100)}%"></div></div>
+              <div class="v8-card-actions"><button ${done && !contract.claimed ? "" : "disabled"} data-v8-claim-contract="${contract.id}">Claim Reward</button></div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function v8PassHtml() {
+    const level = v8SeasonLevel();
+    return `
+      <div class="v8-pass-top" style="margin-bottom:10px">
+        <div>
+          <p class="eyebrow">Season Track</p>
+          <strong>Season Level ${level}</strong>
+          <small>Earn XP from wins, bosses, pets, contracts, and chests.</small>
+        </div>
+        <button class="v8-pass-claim" data-v8-claim-all-pass="true">Claim All</button>
+      </div>
+      <div class="v8-progress-line" style="margin-bottom:12px"><div class="v8-progress-fill" style="width:${v8SeasonProgress()}%"></div></div>
+      <div class="v8-grid">
+        ${V8_PASS_REWARDS.map((reward) => {
+          const locked = level < reward.level;
+          const claimed = Boolean(v8Meta.passClaimed[reward.level]);
+          return `
+            <div class="v8-pass-row ${locked ? "locked" : ""} ${claimed ? "claimed" : ""}">
+              <span class="v8-level-badge">${reward.level}</span>
+              <div><strong>${v8Escape(reward.text)}</strong><small>${locked ? "Locked" : claimed ? "Already claimed" : "Ready to claim"}</small></div>
+              <button class="v8-pass-claim" ${!locked && !claimed ? "" : "disabled"} data-v8-claim-pass="${reward.level}">${claimed ? "✓" : "Claim"}</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function v8SkinsHtml() {
+    return `<div class="v8-grid">${V8_SKINS.map((skin) => {
+      const owned = Boolean(v8Meta.ownedSkins[skin.id]);
+      const equipped = v8Meta.equippedSkins?.[skin.classKey] === skin.id;
+      return `
+        <div class="v8-card ${v8RarityClass(skin.rarity)}">
+          <div class="v8-card-top">
+            <div><strong>${skin.icon} ${v8Escape(skin.title)}</strong><small>${v8Escape(skin.classKey || "all")} • ${v8Escape(skin.rarity)}</small></div>
+            <span class="v8-pill ${equipped ? "equipped" : ""}">${equipped ? "Equipped" : owned ? "Owned" : "Locked"}</span>
+          </div>
+          <small>${v8Escape(skin.desc)}</small>
+          <div class="v8-card-actions"><button ${owned && !equipped ? "" : "disabled"} data-v8-equip-skin="${skin.id}">${equipped ? "Equipped" : owned ? "Equip" : "Find in Chests"}</button></div>
+        </div>
+      `;
+    }).join("")}</div>`;
+  }
+
+  function v8PetsHtml() {
+    return `<div class="v8-grid">${V8_PETS.map((pet) => {
+      const owned = Boolean(v8Meta.ownedPets[pet.id]);
+      const equipped = v8Meta.equippedPet === pet.id;
+      return `
+        <div class="v8-card ${v8RarityClass(pet.rarity)}">
+          <div class="v8-card-top">
+            <div><strong>${pet.icon} ${v8Escape(pet.title)}</strong><small>${v8Escape(pet.rarity)}</small></div>
+            <span class="v8-pill ${equipped ? "equipped" : ""}">${equipped ? "Equipped" : owned ? "Owned" : "Locked"}</span>
+          </div>
+          <small>${v8Escape(pet.desc)}</small>
+          <div class="v8-card-actions"><button ${owned && !equipped ? "" : "disabled"} data-v8-equip-pet="${pet.id}">${equipped ? "Equipped" : owned ? "Equip" : "Find in Chests"}</button></div>
+        </div>
+      `;
+    }).join("")}</div>`;
+  }
+
+  function v8CodesHtml() {
+    return `
+      <div class="v8-code-panel">
+        <p class="eyebrow">Redeem Codes</p>
+        <strong>Try these launch codes:</strong>
+        <small>EMXLAUNCH • SOULARENA • NEONPET</small>
+        <input id="v8CodeInput" placeholder="Enter code" autocomplete="off" />
+        <button class="v8-code-btn primary-glow" data-v8-redeem="true">Redeem Code</button>
+      </div>
+    `;
+  }
+
+  function v8CollectionRank() {
+    const score = (v8Meta.stats.wins || 0) + (v8Meta.stats.bosses || 0) * 4 + (v8Meta.stats.skinsUnlocked || 0) * 3 + (v8Meta.stats.petsUnlocked || 0) * 4;
+    if (score >= 150) return "EMX Legend";
+    if (score >= 90) return "Mythic Hunter";
+    if (score >= 45) return "Neon Champion";
+    if (score >= 18) return "Arena Specialist";
+    return "Rookie Duelist";
+  }
+
+  function v8Escape(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#039;",
+      '"': "&quot;"
+    }[char]));
+  }
+
+  function v8PatchGameFunctions() {
+    if (window.__emxV8Patched) return;
+    window.__emxV8Patched = true;
+
+    const oldMakeState = makeState;
+    makeState = function v8MakeStatePatched(classKey) {
+      const nextState = oldMakeState(classKey);
+      return v8ApplyLoadoutToState(nextState, classKey);
+    };
+
+    const oldStartNewRun = startNewRun;
+    startNewRun = function v8StartNewRunPatched(classKey) {
+      v8Track("runs", 1);
+      v8AddSeasonXp(10, "New run");
+      oldStartNewRun(classKey);
+      if (state) {
+        state = v8ApplyLoadoutToState(state, classKey);
+        const pet = v8PetById(state.v8PetId || "none");
+        if (pet && pet.id !== "none") addLog(`${pet.icon} ${pet.title} joined your run.`);
+        render();
+        saveGame();
+      }
+      v8SaveMeta();
+      v8RenderHubStats();
+    };
+
+    const oldStartFight = startFight;
+    startFight = function v8StartFightPatched() {
+      oldStartFight();
+      v8ApplyPetStartFightBuff();
+      render();
+      saveGame();
+    };
+
+    const oldApplyPlayerPower = applyPlayerPower;
+    applyPlayerPower = function v8ApplyPlayerPowerPatched(key, power) {
+      oldApplyPlayerPower(key, power);
+      v8PetAssist(key, power);
+    };
+
+    const oldUsePower = usePower;
+    usePower = async function v8UsePowerPatched(key) {
+      const canTrackUltimate = state && state.phase === "player" && key === "ultimate" && state.player?.ult >= 100;
+      await oldUsePower(key);
+      if (canTrackUltimate) {
+        v8Track("ultimates", 1);
+        v8AddSeasonXp(12, "Ultimate used");
+        v8SaveMeta();
+        v8RenderHubStats();
+      }
+    };
+
+    const oldWinFight = winFight;
+    winFight = function v8WinFightPatched() {
+      const wasBoss = Boolean(state?.enemy?.isBoss || state?.enemy?.v7ZoneFinal);
+      const wasElite = Boolean(state?.enemy?.elite || state?.enemy?.isMiniBoss);
+      const hadLootGoblin = state?.v8PetId === "lootGoblin";
+      oldWinFight();
+      if (!state || state.phase === "gameover") return;
+      v8Track("wins", 1);
+      if (wasBoss) {
+        v8Track("bosses", 1);
+        v8AddChest("boss", 1);
+        v8AddSeasonXp(65, "Boss defeated");
+      } else {
+        v8AddSeasonXp(22, "Battle won");
+      }
+      if (wasElite) {
+        v8Track("elites", 1);
+        v8AddSeasonXp(20, "Elite defeated");
+      }
+      if (hadLootGoblin && Math.random() < 0.22) v8AddChest("neon", 1);
+      if (Math.random() < (wasBoss ? 0.25 : 0.07)) v8AddChest("neon", 1);
+      if (state.mods?.v8CoinBoost && state.coins) {
+        const bonus = Math.round(8 * state.mods.v8CoinBoost * Math.max(1, state.wave || 1));
+        state.coins += bonus;
+        addLog(`Loot boost gave +${bonus} coins.`);
+      }
+      v8SaveMeta();
+      v8RenderHubStats();
+      saveGame();
+    };
+
+    const oldChooseUpgrade = chooseUpgrade;
+    chooseUpgrade = function v8ChooseUpgradePatched(id) {
+      oldChooseUpgrade(id);
+      v8Track("upgrades", 1);
+      v8AddSeasonXp(8, "Upgrade picked");
+      v8SaveMeta();
+      v8RenderHubStats();
+    };
+
+    if (typeof buyShopItem === "function") {
+      const oldBuyShopItem = buyShopItem;
+      buyShopItem = function v8BuyShopItemPatched(id) {
+        const before = state?.coins || 0;
+        oldBuyShopItem(id);
+        const spent = Math.max(0, before - (state?.coins || 0));
+        if (spent > 0) {
+          v8Track("coinsSpent", spent);
+          v8AddSeasonXp(Math.min(50, Math.ceil(spent / 5)), "Shop spending");
+          v8SaveMeta();
+          v8RenderHubStats();
+        }
+      };
+    }
+
+    const oldLoadGame = loadGame;
+    loadGame = function v8LoadGamePatched() {
+      const loaded = oldLoadGame();
+      if (loaded && state) {
+        if (!state.v8LoadoutApplied) v8ApplyLoadoutToState(state, state.classKey);
+        render();
+      }
+      return loaded;
+    };
+
+    const oldRender = render;
+    render = function v8RenderPatched() {
+      oldRender();
+      const versionChip = document.querySelector(".version-chip");
+      if (versionChip) versionChip.textContent = "Collection Update";
+      const sprite = $("playerSprite");
+      if (sprite && state?.v8SkinId) {
+        const skin = v8SkinById(state.v8SkinId);
+        if (skin) sprite.textContent = skin.icon;
+      }
+      const petSprite = document.querySelector(".player-panel .v8-pet-sprite");
+      if (petSprite && (!state?.v8PetId || state.v8PetId === "none")) petSprite.remove();
+      v8RenderRunHud();
+      v8RenderHubStats();
+    };
+  }
+
+  v8PatchGameFunctions();
+  v8InstallUI();
+  v8SaveMeta();
+
+  setTimeout(() => {
+    v8InstallUI();
+    v8RenderHubStats();
+    if (typeof render === "function" && state) render();
+  }, 250);
+})();
+
+/* === EMX Soul Arena v9: Sound Lab + Kid-Fun Update === */
+(function emxSoulArenaV9() {
+  const V9_UPDATE_NAME = "Sound + Kid Fun";
+  const V9_META_KEY = "emxSoulArenaKidFun_v9";
+  const V9_SOUND_KEY = "emxSoulArenaSound_v7";
+  const V9_VOLUME_KEY = "emxSoulArenaVolume_v9";
+  const V9_MUSIC_KEY = "emxSoulArenaMusic_v9";
+
+  const V9_STICKER_STARTERS = [
+    { id: "slime", name: "Slime", icon: "🟢" },
+    { id: "goblin", name: "Goblin", icon: "👺" },
+    { id: "skeleton", name: "Skeleton", icon: "💀" },
+    { id: "wolf", name: "Dire Wolf", icon: "🐺" },
+    { id: "bat", name: "Vampire Bat", icon: "🦇" },
+    { id: "spider", name: "Poison Spider", icon: "🕷️" },
+    { id: "imp", name: "Ice Imp", icon: "👿" },
+    { id: "golem", name: "Rock Golem", icon: "🗿" },
+    { id: "goblinKing", name: "Goblin King", icon: "🤴" },
+    { id: "boneDragon", name: "Bone Dragon", icon: "🐉" },
+    { id: "stormTitan", name: "Storm Titan", icon: "⛈️" },
+    { id: "voidBeast", name: "Void Emperor", icon: "👁️" }
+  ];
+
+  const V9_DOJO_POWERS = [
+    { type: "fire", icon: "🔥", title: "Fire Blast", desc: "Flame sound + impact burst" },
+    { type: "lightning", icon: "⚡", title: "Lightning Bolt", desc: "Zap sound + bright flash" },
+    { type: "ice", icon: "❄️", title: "Ice Freeze", desc: "Shimmer sound + blue burst" },
+    { type: "poison", icon: "☠️", title: "Poison Cloud", desc: "Bubbling toxic pop" },
+    { type: "shadow", icon: "🌑", title: "Shadow Dash", desc: "Fast whoosh combo" },
+    { type: "heal", icon: "✨", title: "Heal Sparkle", desc: "Soft healing chime" },
+    { type: "shield", icon: "🛡️", title: "Shield Pop", desc: "Protective bubble sound" },
+    { type: "meteor", icon: "☄️", title: "Meteor Drop", desc: "Big cinematic boom" }
+  ];
+
+  let v9Meta = v9LoadMeta();
+  let v9LastHint = "";
+
+  const V9Sound = {
+    ctx: null,
+    unlocked: false,
+    musicTimer: null,
+    musicStep: 0,
+
+    enabled() {
+      return localStorage.getItem(V9_SOUND_KEY) !== "off";
+    },
+
+    volume() {
+      const raw = Number(localStorage.getItem(V9_VOLUME_KEY));
+      if (Number.isFinite(raw)) return clamp(raw, 0, 1);
+      return 0.75;
+    },
+
+    musicEnabled() {
+      return localStorage.getItem(V9_MUSIC_KEY) === "on";
+    },
+
+    setVolume(value) {
+      localStorage.setItem(V9_VOLUME_KEY, String(clamp(Number(value) || 0, 0, 1)));
+      this.play("tap");
+      v9RenderSoundStatus();
+    },
+
+    setSound(on) {
+      localStorage.setItem(V9_SOUND_KEY, on ? "on" : "off");
+      if (on) this.play("tap");
+      else this.stopMusic();
+      v9RenderSoundStatus();
+      v9RenderStartPanel();
+    },
+
+    setMusic(on) {
+      localStorage.setItem(V9_MUSIC_KEY, on ? "on" : "off");
+      if (on) this.startMusic();
+      else this.stopMusic();
+      v9RenderSoundStatus();
+    },
+
+    getCtx() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return null;
+      if (!this.ctx) this.ctx = new AudioContext();
+      return this.ctx;
+    },
+
+    async unlock(playWake = false) {
+      if (!this.enabled()) return false;
+      const ctx = this.getCtx();
+      if (!ctx) return false;
+      try {
+        if (ctx.state === "suspended") await ctx.resume();
+        this.unlocked = ctx.state === "running";
+        if (this.unlocked) {
+          const wake = document.getElementById("v9SoundWake");
+          if (wake) wake.classList.add("hide");
+          if (playWake) this.play("tap");
+          if (this.musicEnabled()) this.startMusic();
+        }
+        v9RenderSoundStatus();
+        return this.unlocked;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    makeGain(ctx, start, duration, amount = 0.08) {
+      const gain = ctx.createGain();
+      const master = amount * this.volume();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, master), start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + Math.max(0.025, duration));
+      return gain;
+    },
+
+    tone(freq, duration = 0.1, wave = "sine", delay = 0, amount = 0.075, endFreq = null) {
+      if (!this.enabled()) return;
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const start = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = this.makeGain(ctx, start, duration, amount);
+      osc.type = wave;
+      osc.frequency.setValueAtTime(Math.max(20, freq), start);
+      if (endFreq) osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.03);
+    },
+
+    noise(duration = 0.12, delay = 0, amount = 0.055, filterFreq = 600) {
+      if (!this.enabled()) return;
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const start = ctx.currentTime + delay;
+      const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = this.makeGain(ctx, start, duration, amount);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(filterFreq, start);
+      source.buffer = buffer;
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(start);
+      source.stop(start + duration + 0.02);
+    },
+
+    chord(freqs, duration = 0.14, wave = "triangle", amount = 0.045) {
+      freqs.forEach((freq, index) => this.tone(freq, duration, wave, index * 0.025, amount));
+    },
+
+    play(type = "tap") {
+      if (!this.enabled()) return;
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume().then(() => { this.unlocked = true; v9RenderSoundStatus(); }).catch(() => {});
+      this.unlocked = ctx.state === "running" || this.unlocked;
+
+      switch (type) {
+        case "tap":
+          this.tone(520, 0.045, "triangle", 0, 0.045, 760);
+          break;
+        case "coin":
+          this.tone(900, 0.06, "triangle", 0, 0.05, 1250);
+          this.tone(1300, 0.08, "sine", 0.05, 0.045);
+          break;
+        case "upgrade":
+          this.chord([420, 630, 840], 0.13, "triangle", 0.055);
+          break;
+        case "fire":
+        case "fireball":
+          this.noise(0.16, 0, 0.06, 760);
+          this.tone(150, 0.18, "sawtooth", 0, 0.06, 310);
+          this.tone(520, 0.1, "triangle", 0.06, 0.045, 260);
+          break;
+        case "meteor":
+        case "nova":
+          this.noise(0.32, 0, 0.1, 520);
+          this.tone(90, 0.32, "sawtooth", 0, 0.09, 52);
+          this.tone(720, 0.18, "triangle", 0.04, 0.055, 200);
+          break;
+        case "slash":
+        case "attack":
+          this.noise(0.08, 0, 0.055, 1500);
+          this.tone(240, 0.07, "sawtooth", 0, 0.055, 120);
+          break;
+        case "combo":
+          [0, 0.08, 0.16, 0.24].forEach((delay, i) => {
+            this.noise(0.06, delay, 0.04, 1700 + i * 120);
+            this.tone(240 + i * 70, 0.06, "square", delay, 0.035, 140 + i * 50);
+          });
+          break;
+        case "lightning":
+          this.noise(0.12, 0, 0.07, 2600);
+          this.tone(1200, 0.08, "square", 0, 0.055, 420);
+          this.tone(920, 0.07, "sawtooth", 0.045, 0.045, 1600);
+          break;
+        case "ice":
+        case "freeze":
+          this.chord([660, 880, 1320], 0.16, "sine", 0.04);
+          this.noise(0.12, 0.04, 0.025, 3000);
+          break;
+        case "poison":
+          this.tone(180, 0.12, "triangle", 0, 0.04, 110);
+          this.tone(230, 0.08, "sine", 0.08, 0.032, 180);
+          this.noise(0.16, 0, 0.03, 450);
+          break;
+        case "shadow":
+        case "drain":
+          this.tone(320, 0.12, "sawtooth", 0, 0.05, 80);
+          this.noise(0.14, 0.02, 0.04, 900);
+          break;
+        case "heal":
+          this.chord([523, 659, 784, 1046], 0.18, "sine", 0.04);
+          break;
+        case "shield":
+          this.tone(230, 0.08, "triangle", 0, 0.05, 430);
+          this.tone(430, 0.12, "sine", 0.04, 0.045, 430);
+          break;
+        case "enemy":
+        case "boss":
+          this.noise(type === "boss" ? 0.28 : 0.14, 0, type === "boss" ? 0.08 : 0.05, type === "boss" ? 420 : 700);
+          this.tone(type === "boss" ? 78 : 140, type === "boss" ? 0.28 : 0.14, "sawtooth", 0, type === "boss" ? 0.08 : 0.05, 45);
+          break;
+        case "victory":
+          [523, 659, 784, 1046].forEach((freq, i) => this.tone(freq, 0.14, "triangle", i * 0.08, 0.055));
+          break;
+        case "chest":
+          [740, 980, 1230].forEach((freq, i) => this.tone(freq, 0.12, "sine", i * 0.07, 0.045));
+          this.noise(0.18, 0.12, 0.025, 3000);
+          break;
+        case "fail":
+          this.tone(210, 0.18, "triangle", 0, 0.055, 130);
+          this.tone(130, 0.22, "sine", 0.12, 0.04, 90);
+          break;
+        case "pet":
+          this.tone(760, 0.08, "triangle", 0, 0.045, 980);
+          this.tone(980, 0.08, "triangle", 0.06, 0.04, 760);
+          break;
+        case "sticker":
+          this.chord([650, 900, 1200], 0.12, "triangle", 0.05);
+          this.tone(1600, 0.1, "sine", 0.15, 0.045);
+          break;
+        default:
+          this.tone(440, 0.06, "triangle", 0, 0.04);
+      }
+    },
+
+    startMusic() {
+      if (!this.enabled()) return;
+      this.unlock(false);
+      this.stopMusic();
+      this.musicTimer = setInterval(() => {
+        if (!this.musicEnabled() || !this.enabled()) return this.stopMusic();
+        const bass = [110, 130.81, 146.83, 164.81][this.musicStep % 4];
+        const lead = [440, 523.25, 659.25, 587.33][this.musicStep % 4];
+        this.tone(bass, 0.26, "triangle", 0, 0.022, bass * 0.5);
+        this.tone(lead, 0.18, "sine", 0.04, 0.018);
+        this.musicStep += 1;
+      }, 780);
+    },
+
+    stopMusic() {
+      if (this.musicTimer) clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+  };
+
+  window.EMXSound = V9Sound;
+
+  function v9LoadMeta() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(V9_META_KEY) || "{}");
+      return {
+        kidMode: Boolean(saved.kidMode),
+        stickers: saved.stickers || {},
+        stickerWins: saved.stickerWins || 0,
+        dojoPlays: saved.dojoPlays || 0,
+        soundTests: saved.soundTests || 0,
+        funStars: saved.funStars || 0,
+        seenTips: saved.seenTips || {}
+      };
+    } catch (error) {
+      return { kidMode: false, stickers: {}, stickerWins: 0, dojoPlays: 0, soundTests: 0, funStars: 0, seenTips: {} };
+    }
+  }
+
+  function v9SaveMeta() {
+    localStorage.setItem(V9_META_KEY, JSON.stringify(v9Meta));
+  }
+
+  function v9IsKidMode() {
+    return Boolean(v9Meta.kidMode);
+  }
+
+  function v9Escape(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function v9PowerSfx(key, power) {
+    const label = `${key || ""} ${power?.label || ""} ${power?.animation || ""}`.toLowerCase();
+    if (label.includes("meteor")) return "meteor";
+    if (label.includes("nova")) return "nova";
+    if (label.includes("lightning") || label.includes("thunder") || label.includes("storm")) return "lightning";
+    if (label.includes("ice") || label.includes("freeze")) return "ice";
+    if (label.includes("poison") || label.includes("spore")) return "poison";
+    if (label.includes("shadow") || label.includes("night") || label.includes("drain")) return "shadow";
+    if (label.includes("heal") || label.includes("bloom") || label.includes("light")) return "heal";
+    if (label.includes("shield") || label.includes("parry") || label.includes("guard")) return "shield";
+    if (label.includes("combo")) return "combo";
+    if (label.includes("fire") || label.includes("ember") || label.includes("flame")) return "fire";
+    return key === "basic" ? "slash" : "attack";
+  }
+
+  function v9StickerList() {
+    const fromBase = [...V9_STICKER_STARTERS];
+    try {
+      if (Array.isArray(ENEMIES)) ENEMIES.forEach((e) => fromBase.push({ id: e.id || e.name, name: e.name, icon: e.icon }));
+      if (Array.isArray(BOSSES)) BOSSES.forEach((e) => fromBase.push({ id: e.id || e.name, name: e.name, icon: e.icon }));
+    } catch (error) {}
+    Object.values(v9Meta.stickers || {}).forEach((e) => fromBase.push(e));
+    const seen = new Set();
+    return fromBase.filter((item) => {
+      const id = item.id || item.name;
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  function v9GrantSticker(enemy) {
+    if (!enemy) return false;
+    const id = enemy.id || enemy.name || "mysteryEnemy";
+    if (v9Meta.stickers[id]) return false;
+    v9Meta.stickers[id] = { id, name: enemy.name || "Mystery Enemy", icon: enemy.icon || "✨", date: Date.now() };
+    v9Meta.stickerWins += 1;
+    v9Meta.funStars += enemy.isBoss || enemy.v7ZoneFinal ? 4 : enemy.elite || enemy.isMiniBoss ? 2 : 1;
+    v9SaveMeta();
+    V9Sound.play("sticker");
+    v9Toast(`New sticker unlocked: ${enemy.icon || "✨"} ${enemy.name || "Mystery Enemy"}!`);
+    return true;
+  }
+
+  function v9Toast(message) {
+    let toast = document.getElementById("v7Toast") || document.getElementById("v9Toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "v9Toast";
+      toast.className = "v7-toast";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(v9Toast._timer);
+    v9Toast._timer = setTimeout(() => toast.classList.remove("show"), 2400);
+  }
+
+  function v9InstallUI() {
+    document.title = "EMX Soul Arena - Sound + Kid Fun";
+    const versionChip = document.querySelector(".version-chip");
+    if (versionChip) versionChip.textContent = V9_UPDATE_NAME;
+    const sub = document.querySelector(".brand-title-card .subtitle");
+    if (sub) sub.textContent = "Sound Lab, Kid Mode, Sticker Book, Training Dojo, campaign zones, gear, skins, pets, chests, cinematic combat, HQ upgrades, and multiplayer.";
+
+    const start = $("startScreen");
+    if (start && !$("v9StartPanel")) {
+      const panel = document.createElement("section");
+      panel.id = "v9StartPanel";
+      panel.className = "v9-start-panel";
+      const heading = start.querySelector(".section-heading");
+      start.insertBefore(panel, heading || start.firstChild);
+    }
+
+    const footer = document.querySelector(".footer-actions");
+    if (footer && !$("v9BattleDock")) {
+      const dock = document.createElement("section");
+      dock.id = "v9BattleDock";
+      dock.className = "v7-battle-dock v9-battle-dock";
+      dock.innerHTML = `
+        <button data-v9-action="soundLab">🔊 Sound Lab</button>
+        <button data-v9-action="dojo">🎮 Dojo</button>
+        <button data-v9-action="stickers">📒 Stickers</button>
+        <button data-v9-action="toggleKid">${v9IsKidMode() ? "🌟 Kid On" : "🌙 Kid Mode"}</button>
+      `;
+      footer.insertAdjacentElement("afterend", dock);
+    }
+
+    const arena = $("arena");
+    if (arena && !$("v9Mascot")) {
+      const mascot = document.createElement("section");
+      mascot.id = "v9Mascot";
+      mascot.className = "v9-mascot";
+      mascot.innerHTML = `<div class="v9-mascot-icon">🤖</div><p class="v9-mascot-text">Tip bot ready.</p>`;
+      arena.insertAdjacentElement("afterend", mascot);
+    }
+
+    if (!$("v9SoundWake")) {
+      const wake = document.createElement("button");
+      wake.id = "v9SoundWake";
+      wake.className = "v9-sound-wake";
+      wake.textContent = "🔊 Tap to enable game sounds";
+      wake.dataset.v9Action = "unlockSound";
+      document.body.appendChild(wake);
+    }
+
+    if (!$("v9SoundOverlay")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <section id="v9SoundOverlay" class="overlay hidden">
+          <div class="modal v9-modal-wide v9-sound-lab">
+            <div class="modal-header-row">
+              <div>
+                <p class="eyebrow">Sound Lab</p>
+                <h2>Make Sure Sounds Work</h2>
+              </div>
+              <button class="close-btn" data-v9-action="closeOverlays">✕</button>
+            </div>
+            <p class="v9-mini-text">On iPhone, sounds only start after a tap. Press <strong>Unlock + Test</strong>, then try the attack buttons.</p>
+            <div class="v9-control-row">
+              <button class="v9-pill-btn primary" data-v9-action="unlockSound">🔊 Unlock + Test</button>
+              <span id="v9SoundStatus" class="v9-status-pill">Checking...</span>
+            </div>
+            <div class="v9-control-row">
+              <label for="v9Volume">Volume</label>
+              <input id="v9Volume" class="v9-slider" type="range" min="0" max="1" step="0.05" value="${V9Sound.volume()}" />
+            </div>
+            <div class="v9-button-grid">
+              <button class="v9-small-btn" data-v9-action="soundOn">🔊 Sound On</button>
+              <button class="v9-small-btn" data-v9-action="soundOff">🔇 Mute</button>
+              <button class="v9-small-btn" data-v9-action="musicOn">🎵 Music On</button>
+              <button class="v9-small-btn" data-v9-action="musicOff">⏹ Music Off</button>
+            </div>
+            <h3 style="margin-top:16px">Test Attack Sounds</h3>
+            <div class="v9-sound-buttons">
+              ${V9_DOJO_POWERS.map((p) => `<button class="v9-sound-test-btn" data-v9-sfx="${p.type}">${p.icon} ${p.title}<span>${p.desc}</span></button>`).join("")}
+              <button class="v9-sound-test-btn" data-v9-sfx="victory">🏆 Victory<span>Reward jingle</span></button>
+              <button class="v9-sound-test-btn" data-v9-sfx="chest">🎁 Chest<span>Loot reveal</span></button>
+            </div>
+          </div>
+        </section>
+
+        <section id="v9DojoOverlay" class="overlay hidden">
+          <div class="modal v9-modal-wide v9-kid-card">
+            <div class="modal-header-row">
+              <div>
+                <p class="eyebrow">Training Dojo</p>
+                <h2>Power Playground</h2>
+              </div>
+              <button class="close-btn" data-v9-action="closeOverlays">✕</button>
+            </div>
+            <p class="v9-mini-text">A kid-friendly practice room. Tap powers to hear sounds, see bursts, and learn what each attack does.</p>
+            <div id="v9DojoStage" class="v9-dojo-stage">
+              <div class="v9-dojo-target">🎯</div>
+              <div id="v9DojoBurst" class="v9-dojo-burst"></div>
+            </div>
+            <div class="v9-dojo-grid">
+              ${V9_DOJO_POWERS.map((p) => `<button class="v9-dojo-power" data-v9-dojo="${p.type}">${p.icon} ${p.title}<span>${p.desc}</span></button>`).join("")}
+            </div>
+          </div>
+        </section>
+
+        <section id="v9StickerOverlay" class="overlay hidden">
+          <div class="modal v9-modal-wide v9-kid-card">
+            <div class="modal-header-row">
+              <div>
+                <p class="eyebrow">Sticker Book</p>
+                <h2>Enemy Collection</h2>
+              </div>
+              <button class="close-btn" data-v9-action="closeOverlays">✕</button>
+            </div>
+            <p class="v9-mini-text">Beat enemies and bosses to collect stickers. This gives younger players a fun collection goal even if a run ends early.</p>
+            <div id="v9StickerStats" class="v9-sparkline"></div>
+            <div id="v9StickerGrid" class="v9-sticker-grid"></div>
+          </div>
+        </section>
+      `);
+    }
+
+    const volume = $("v9Volume");
+    if (volume && !volume.dataset.bound) {
+      volume.dataset.bound = "true";
+      volume.addEventListener("input", (event) => V9Sound.setVolume(event.target.value));
+    }
+
+    v9RenderStartPanel();
+    v9RenderSoundStatus();
+    v9RenderMascot();
+    document.body.classList.toggle("v9-kid-active", v9IsKidMode());
+  }
+
+  function v9RenderStartPanel() {
+    const panel = $("v9StartPanel");
+    if (!panel) return;
+    const stickerCount = Object.keys(v9Meta.stickers || {}).length;
+    panel.innerHTML = `
+      <div class="v9-top-strip">
+        <div>
+          <p class="eyebrow">V9 Update</p>
+          <h3>Sound + Kid Fun Center</h3>
+        </div>
+        <span class="v9-status-pill">${v9IsKidMode() ? "🌟 Kid Mode On" : "🌙 Normal Mode"}</span>
+      </div>
+      <p class="v9-mini-text">Sound testing, a practice dojo, friendly assist mode, and a sticker book for younger players.</p>
+      <div class="v9-sparkline">
+        <span title="Sound">${V9Sound.enabled() ? "🔊" : "🔇"}</span>
+        <span title="Stickers">📒 ${stickerCount}</span>
+        <span title="Fun stars">⭐ ${v9Meta.funStars || 0}</span>
+        <span title="Dojo plays">🎮 ${v9Meta.dojoPlays || 0}</span>
+      </div>
+      <div class="v9-button-grid" style="margin-top:12px">
+        <button class="v9-big-btn primary" data-v9-action="soundLab">🔊 Sound Lab</button>
+        <button class="v9-big-btn" data-v9-action="dojo">🎮 Training Dojo</button>
+        <button class="v9-big-btn" data-v9-action="stickers">📒 Sticker Book</button>
+        <button class="v9-big-btn" data-v9-action="toggleKid">${v9IsKidMode() ? "🌟 Kid Mode On" : "🌙 Kid Mode Off"}</button>
+      </div>
+    `;
+
+    const battleDock = $("v9BattleDock");
+    if (battleDock) {
+      const kidBtn = battleDock.querySelector('[data-v9-action="toggleKid"]');
+      if (kidBtn) kidBtn.textContent = v9IsKidMode() ? "🌟 Kid On" : "🌙 Kid Mode";
+    }
+  }
+
+  function v9RenderSoundStatus() {
+    const status = $("v9SoundStatus");
+    if (status) {
+      const ctx = V9Sound.ctx;
+      const stateText = !V9Sound.enabled() ? "Muted" : V9Sound.unlocked || ctx?.state === "running" ? "Sound Ready" : "Needs Tap";
+      status.textContent = `${V9Sound.enabled() ? "🔊" : "🔇"} ${stateText} • Vol ${Math.round(V9Sound.volume() * 100)}%`;
+    }
+    const wake = $("v9SoundWake");
+    if (wake) {
+      const ctxReady = V9Sound.unlocked || V9Sound.ctx?.state === "running";
+      wake.classList.toggle("hide", !V9Sound.enabled() || ctxReady);
+    }
+  }
+
+  function v9MascotHint() {
+    if (!state) return "Choose a class and start a run. I’ll help with tips.";
+    const enemy = state.enemy;
+    if (!enemy) return "Pick a zone or start an arena run.";
+    if (state.phase === "gameover") return "Good try. Upgrade your gear, use Kid Mode, or practice in the Dojo.";
+    if (enemy.isBoss || enemy.v7ZoneFinal) return "Boss tip: shield before big hits, use healing early, and save your ultimate for the last half of the fight.";
+    if ((state.player?.hp || 0) < (state.player?.maxHp || 1) * 0.35) return "Careful! Your HP is low. A heal or shield is safer than another attack.";
+    if ((state.player?.ult || 0) >= 100) return "Ultimate is ready. Use it when the enemy has high HP or a boss starts pushing back.";
+    if (enemy.statuses?.length) return "Nice! Status effects are working. Keep pressure on enemies that are burned, poisoned, stunned, or rooted.";
+    if (state.player?.mana < 12) return "Mana is low. Use free basic attacks while mana refills.";
+    if (v9IsKidMode()) return "Kid Assist: enemies are softer, rewards are friendlier, and stickers unlock from wins.";
+    return "Build combo, pick upgrades, and try to collect a new sticker each run.";
+  }
+
+  function v9RenderMascot() {
+    const mascot = $("v9Mascot");
+    if (!mascot) return;
+    const hint = v9MascotHint();
+    if (hint !== v9LastHint) v9LastHint = hint;
+    mascot.querySelector(".v9-mascot-text").textContent = hint;
+  }
+
+  function v9OpenOverlay(id) {
+    ["v9SoundOverlay", "v9DojoOverlay", "v9StickerOverlay"].forEach((name) => $(name)?.classList.add("hidden"));
+    $(id)?.classList.remove("hidden");
+    if (id === "v9StickerOverlay") v9RenderStickers();
+    if (id === "v9SoundOverlay") v9RenderSoundStatus();
+  }
+
+  function v9CloseOverlays() {
+    ["v9SoundOverlay", "v9DojoOverlay", "v9StickerOverlay"].forEach((name) => $(name)?.classList.add("hidden"));
+  }
+
+  function v9RenderStickers() {
+    const grid = $("v9StickerGrid");
+    const stats = $("v9StickerStats");
+    if (!grid || !stats) return;
+    const list = v9StickerList();
+    const owned = Object.keys(v9Meta.stickers || {}).length;
+    stats.innerHTML = `<span>📒 ${owned}/${list.length}</span><span>⭐ ${v9Meta.funStars || 0}</span><span>🏆 ${v9Meta.stickerWins || 0}</span>`;
+    grid.innerHTML = list.map((item) => {
+      const unlocked = Boolean(v9Meta.stickers?.[item.id]);
+      return `
+        <div class="v9-sticker-card ${unlocked ? "" : "locked"}">
+          <div class="v9-sticker-icon">${unlocked ? v9Escape(item.icon || "✨") : "❔"}</div>
+          <strong>${unlocked ? v9Escape(item.name || "Sticker") : "Locked Sticker"}</strong>
+          <small>${unlocked ? "Collected" : "Win battles to discover"}</small>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function v9ToggleKidMode() {
+    v9Meta.kidMode = !v9Meta.kidMode;
+    v9SaveMeta();
+    document.body.classList.toggle("v9-kid-active", v9IsKidMode());
+    v9Toast(v9IsKidMode() ? "Kid Mode enabled: easier fights + friendlier rewards." : "Kid Mode off: normal challenge restored.");
+    V9Sound.play(v9IsKidMode() ? "upgrade" : "tap");
+    if (state && v9IsKidMode()) {
+      state.player.shield = (state.player.shield || 0) + 15;
+      state.player.mana = clamp((state.player.mana || 0) + 12, 0, state.player.maxMana || 999);
+      addLog("Kid Assist gave +15 shield and +12 mana.");
+      render();
+      saveGame();
+    }
+    v9RenderStartPanel();
+    v9RenderMascot();
+  }
+
+  function v9PlayDojo(type) {
+    V9Sound.play(type);
+    v9Meta.dojoPlays += 1;
+    v9Meta.funStars += 1;
+    v9SaveMeta();
+    const stage = $("v9DojoStage");
+    const burst = $("v9DojoBurst");
+    const target = stage?.querySelector(".v9-dojo-target");
+    if (target) target.textContent = V9_DOJO_POWERS.find((p) => p.type === type)?.icon || "✨";
+    if (burst) {
+      const colors = {
+        fire: "radial-gradient(circle, #fff176, #ff4d00 65%, transparent 70%)",
+        lightning: "radial-gradient(circle, #ffffff, #6ecbff 65%, transparent 70%)",
+        ice: "radial-gradient(circle, #e8fbff, #7bdcff 65%, transparent 70%)",
+        poison: "radial-gradient(circle, #eaffad, #58ff75 65%, transparent 70%)",
+        shadow: "radial-gradient(circle, #d98cff, #25103f 65%, transparent 70%)",
+        heal: "radial-gradient(circle, #ffffff, #5ee6a7 65%, transparent 70%)",
+        shield: "radial-gradient(circle, #ffffff, #8ccfff 65%, transparent 70%)",
+        meteor: "radial-gradient(circle, #fff176, #ff3b3b 65%, transparent 70%)"
+      };
+      burst.style.background = colors[type] || colors.fire;
+    }
+    if (stage) {
+      stage.classList.remove("cast");
+      void stage.offsetWidth;
+      stage.classList.add("cast");
+      setTimeout(() => stage.classList.remove("cast"), 700);
+    }
+    v9RenderStartPanel();
+  }
+
+  function v9Confetti(count = 26) {
+    const wrap = document.createElement("div");
+    wrap.className = "v9-confetti";
+    for (let i = 0; i < count; i++) {
+      const bit = document.createElement("i");
+      bit.style.left = `${Math.random() * 100}%`;
+      bit.style.animationDelay = `${Math.random() * 0.28}s`;
+      bit.style.transform = `rotate(${Math.random() * 180}deg)`;
+      wrap.appendChild(bit);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 1900);
+  }
+
+  function v9WireEvents() {
+    if (v9WireEvents.wired) return;
+    v9WireEvents.wired = true;
+
+    document.addEventListener("pointerdown", () => V9Sound.unlock(false), { passive: true });
+    document.addEventListener("touchstart", () => V9Sound.unlock(false), { passive: true });
+
+    document.addEventListener("click", (event) => {
+      const actionEl = event.target.closest("[data-v9-action]");
+      const sfxEl = event.target.closest("[data-v9-sfx]");
+      const dojoEl = event.target.closest("[data-v9-dojo]");
+      if (actionEl || sfxEl || dojoEl || event.target.closest("button, a")) V9Sound.play("tap");
+
+      if (sfxEl) {
+        v9Meta.soundTests += 1;
+        v9Meta.funStars += 1;
+        v9SaveMeta();
+        V9Sound.play(sfxEl.dataset.v9Sfx);
+        v9RenderStartPanel();
+      }
+
+      if (dojoEl) v9PlayDojo(dojoEl.dataset.v9Dojo);
+
+      if (!actionEl) return;
+      const action = actionEl.dataset.v9Action;
+      if (action === "soundLab") v9OpenOverlay("v9SoundOverlay");
+      if (action === "dojo") v9OpenOverlay("v9DojoOverlay");
+      if (action === "stickers") v9OpenOverlay("v9StickerOverlay");
+      if (action === "closeOverlays") v9CloseOverlays();
+      if (action === "toggleKid") v9ToggleKidMode();
+      if (action === "unlockSound") V9Sound.unlock(true).then(() => { V9Sound.play("victory"); v9RenderSoundStatus(); });
+      if (action === "soundOn") V9Sound.setSound(true);
+      if (action === "soundOff") V9Sound.setSound(false);
+      if (action === "musicOn") V9Sound.setMusic(true);
+      if (action === "musicOff") V9Sound.setMusic(false);
+    });
+  }
+
+  function v9PatchGame() {
+    if (v9PatchGame.done) return;
+    v9PatchGame.done = true;
+
+    const oldCreateEnemy = createEnemy;
+    createEnemy = function v9CreateEnemyPatched(wave) {
+      const enemy = oldCreateEnemy(wave);
+      if (v9IsKidMode() && enemy) {
+        const hpDrop = enemy.isBoss || enemy.v7ZoneFinal ? 0.78 : enemy.isMiniBoss || enemy.elite ? 0.86 : 0.9;
+        const atkDrop = enemy.isBoss || enemy.v7ZoneFinal ? 0.72 : 0.78;
+        enemy.hp = Math.max(12, Math.round(enemy.hp * hpDrop));
+        enemy.maxHp = Math.max(12, Math.round(enemy.maxHp * hpDrop));
+        enemy.attack = Math.max(3, Math.round(enemy.attack * atkDrop));
+        enemy.defense = Math.max(0, Math.round((enemy.defense || 0) * 0.86));
+        enemy.v9KidSoftened = true;
+      }
+      return enemy;
+    };
+
+    const oldStartFight = startFight;
+    startFight = function v9StartFightPatched() {
+      oldStartFight();
+      if (state && v9IsKidMode()) {
+        state.player.shield = (state.player.shield || 0) + (state.enemy?.isBoss || state.enemy?.v7ZoneFinal ? 30 : 14);
+        state.player.mana = clamp((state.player.mana || 0) + 8, 0, state.player.maxMana || 999);
+        addLog("Kid Assist is active: bonus shield and easier enemies.");
+      }
+      v9RenderMascot();
+      render();
+    };
+
+    const oldDamagePlayer = damagePlayer;
+    damagePlayer = function v9DamagePlayerPatched(amount) {
+      const softened = v9IsKidMode() ? Math.max(1, Math.round(amount * 0.78)) : amount;
+      return oldDamagePlayer(softened);
+    };
+
+    const oldCalculatePlayerDamage = calculatePlayerDamage;
+    calculatePlayerDamage = function v9CalculatePlayerDamagePatched(key, power) {
+      const result = oldCalculatePlayerDamage(key, power);
+      if (v9IsKidMode() && result?.damage) result.damage = Math.max(1, Math.round(result.damage * 1.12));
+      return result;
+    };
+
+    const oldUsePower = usePower;
+    usePower = async function v9UsePowerPatched(key) {
+      const power = state ? getPower(key) : null;
+      const canAct = state && state.phase === "player" && power && state.player.mana >= (power.cost || 0) && (!power.ultCost || state.player.ult >= power.ultCost);
+      if (canAct) V9Sound.play(v9PowerSfx(key, power));
+      const result = await oldUsePower(key);
+      v9RenderMascot();
+      return result;
+    };
+
+    const oldPlayEnemyAnimation = playEnemyAnimation;
+    playEnemyAnimation = async function v9PlayEnemyAnimationPatched(big = false) {
+      V9Sound.play(big || state?.enemy?.isBoss ? "boss" : "enemy");
+      return oldPlayEnemyAnimation(big);
+    };
+
+    const oldWinFight = winFight;
+    winFight = function v9WinFightPatched() {
+      const defeatedEnemy = state?.enemy ? { ...state.enemy } : null;
+      oldWinFight();
+      if (!state || state.phase === "gameover") return;
+      V9Sound.play("victory");
+      v9Confetti(defeatedEnemy?.isBoss || defeatedEnemy?.v7ZoneFinal ? 42 : 22);
+      const stickerUnlocked = v9GrantSticker(defeatedEnemy);
+      if (v9IsKidMode()) {
+        const bonusCoins = defeatedEnemy?.isBoss || defeatedEnemy?.v7ZoneFinal ? 24 : 8;
+        state.coins = (state.coins || 0) + bonusCoins;
+        state.player.hp = clamp((state.player.hp || 0) + Math.round((state.player.maxHp || 100) * 0.08), 0, state.player.maxHp || 100);
+        addLog(`Kid Assist reward: +${bonusCoins} coins${stickerUnlocked ? " and a new sticker" : ""}.`);
+      }
+      v9RenderStartPanel();
+      v9RenderMascot();
+      saveGame();
+    };
+
+    const oldChooseUpgrade = chooseUpgrade;
+    chooseUpgrade = function v9ChooseUpgradePatched(id) {
+      V9Sound.play("upgrade");
+      const result = oldChooseUpgrade(id);
+      v9Meta.funStars += 1;
+      v9SaveMeta();
+      v9RenderStartPanel();
+      return result;
+    };
+
+    if (typeof buyShopItem === "function") {
+      const oldBuyShopItem = buyShopItem;
+      buyShopItem = function v9BuyShopItemPatched(id) {
+        const before = state?.coins || 0;
+        const result = oldBuyShopItem(id);
+        if ((state?.coins || 0) < before) V9Sound.play("coin");
+        return result;
+      };
+    }
+
+    const oldGameOver = gameOver;
+    gameOver = function v9GameOverPatched() {
+      V9Sound.play("fail");
+      const result = oldGameOver();
+      const title = $("gameOverTitle");
+      if (title && v9IsKidMode()) title.textContent = "You got knocked out — try again!";
+      v9RenderMascot();
+      return result;
+    };
+
+    const oldRender = render;
+    render = function v9RenderPatched() {
+      oldRender();
+      const versionChip = document.querySelector(".version-chip");
+      if (versionChip) versionChip.textContent = V9_UPDATE_NAME;
+      document.body.classList.toggle("v9-kid-active", v9IsKidMode());
+      v9RenderStartPanel();
+      v9RenderSoundStatus();
+      v9RenderMascot();
+    };
+  }
+
+  v9InstallUI();
+  v9WireEvents();
+  v9PatchGame();
+  v9SaveMeta();
+
+  setTimeout(() => {
+    v9InstallUI();
+    v9RenderStartPanel();
+    v9RenderSoundStatus();
+    if (state) render();
+  }, 300);
+})();

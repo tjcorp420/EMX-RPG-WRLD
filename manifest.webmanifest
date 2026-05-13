@@ -1,7 +1,7 @@
 {
-  "name": "EMX Soul Arena",
+  "name": "EMX Soul Arena - Sound + Kid Fun",
   "short_name": "Soul Arena",
-  "description": "A neon mobile RPG with campaign zones, gear, skill trees, cinematic combat, and multiplayer by EMX Tweaks.",
+  "description": "EMX Soul Arena with Sound Lab, Kid Mode, Sticker Book, Training Dojo, Campaign, Gear, and Multiplayer.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
