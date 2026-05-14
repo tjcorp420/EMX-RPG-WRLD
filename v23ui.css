@@ -1,0 +1,190 @@
+/* EMX Soul Arena v23 — UI Rescue + Safe Tab Lock
+   Non-invasive: no global click blocking, no tap shields, no pointer hijack. */
+:root {
+  --v23-lime: #caff3d;
+  --v23-purple: #df3dff;
+  --v23-bg: rgba(9, 10, 19, 0.94);
+}
+
+html.v23-scroll-locked,
+body.v23-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body.v23-scroll-locked {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+}
+
+/* Keep hidden panels from sitting above the real UI. */
+.overlay.hidden,
+.v8-overlay.hidden,
+.v9-overlay.hidden,
+.v10-overlay.hidden,
+.v11-overlay:not(.open),
+.v12-overlay:not(.show),
+.v12-choice-room:not(.show),
+.v19-overlay.hidden,
+#v15SafePanel:not(.show),
+#v23Overlay:not(.show) {
+  pointer-events: none !important;
+}
+
+/* Visible panels can receive taps, but we do not block clicks manually. */
+.overlay:not(.hidden),
+.v8-overlay:not(.hidden),
+.v9-overlay:not(.hidden),
+.v10-overlay:not(.hidden),
+.v11-overlay.open,
+.v12-overlay.show,
+.v12-choice-room.show,
+.v19-overlay.show,
+#v15SafePanel.show,
+#v23Overlay.show {
+  pointer-events: auto !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+.overlay:not(.hidden) .modal,
+.v8-overlay:not(.hidden) .v8-modal,
+.v9-overlay:not(.hidden) .v9-modal,
+.v10-overlay:not(.hidden) .v10-modal,
+.v11-overlay.open .v11-modal,
+.v12-overlay.show .v12-modal,
+.v12-choice-room.show .v12-choice-card-wrap,
+.v19-overlay.show .v19-modal,
+#v15SafePanel.show .v15-safe-modal,
+#v23Overlay.show .v23-modal {
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 28px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+  position: relative !important;
+}
+
+.v23-rescue-card {
+  margin: 14px 0;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(202, 255, 61, .28);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(202, 255, 61, .16), transparent 34%),
+    radial-gradient(circle at 88% 18%, rgba(223, 61, 255, .18), transparent 36%),
+    linear-gradient(135deg, rgba(8, 12, 18, .96), rgba(39, 18, 56, .92));
+  box-shadow: 0 18px 54px rgba(0,0,0,.34), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+.v23-rescue-card h2,
+.v23-modal h2 { margin: 0 0 6px; }
+.v23-rescue-card p,
+.v23-modal p { color: #d4cff2; margin: 0 0 12px; line-height: 1.35; }
+
+.v23-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.v23-grid button,
+.v23-grid a,
+.v23-modal button,
+.v23-modal a {
+  min-height: 56px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: linear-gradient(135deg, rgba(39, 43, 77, .96), rgba(78, 44, 110, .94));
+  color: #fff;
+  font-weight: 950;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 12px 24px rgba(0,0,0,.22);
+  touch-action: manipulation;
+}
+
+.v23-grid .primary-v23,
+.v23-modal .primary-v23 {
+  background: linear-gradient(135deg, var(--v23-lime), #fff, var(--v23-purple));
+  color: #080811;
+}
+
+#v23Overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 920000;
+  display: none;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  background: rgba(0, 0, 0, .78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#v23Overlay.show { display: grid; }
+
+.v23-modal {
+  width: min(720px, 100%);
+  padding: 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,.16);
+  background:
+    radial-gradient(circle at top left, rgba(202, 255, 61, .12), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(223, 61, 255, .16), transparent 34%),
+    rgba(12, 13, 24, .985);
+  box-shadow: 0 28px 90px rgba(0,0,0,.56), inset 0 0 0 1px rgba(255,255,255,.04);
+}
+
+.v23-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.v23-close {
+  min-width: 48px !important;
+  min-height: 48px !important;
+  padding: 10px !important;
+}
+
+.v23-info-list { display: grid; gap: 10px; margin: 12px 0; }
+.v23-info {
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.v23-info strong { display: block; margin-bottom: 4px; }
+.v23-info small,
+.v23-info p { color: #d4cff2; line-height: 1.35; }
+
+.v23-scroll-demo {
+  height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px dashed rgba(202,255,61,.32);
+  background: rgba(255,255,255,.04);
+}
+.v23-scroll-demo .v23-info { margin-bottom: 10px; }
+.v23-test-log {
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(0,0,0,.3);
+  color: #dcd7ff;
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: .88rem;
+}
+
+@media (min-width: 680px) {
+  .v23-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
