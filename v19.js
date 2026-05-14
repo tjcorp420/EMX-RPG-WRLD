@@ -213,7 +213,7 @@
     card.id = "v19FeatureCard";
     card.className = "v19-card";
     card.innerHTML = `
-      <p class="eyebrow">Live Build Update</p>
+      <p class="eyebrow">Fun Center</p>
       <h2>EMX Fun Center</h2>
       <p>New home button, clearer help, stronger 3D-style attack previews, boss coaching, daily surprises, and fresh mini-games.</p>
       <div class="v19-mini-stats">
@@ -673,16 +673,16 @@
   }
 
   function markVersion() {
-    qsa(".version-chip").forEach((chip) => { chip.textContent = "Live Build"; });
+    qsa(".version-chip").forEach((chip) => { chip.textContent = "EMX Soul Arena"; });
     const sub = d.querySelector(".brand-title-card .subtitle");
-    if (sub) sub.textContent = "Campaign zones, EMX City, pets, gear, arcade games, multiplayer, and cinematic combat.";
+    if (sub) sub.textContent = "Battle, explore, collect gear, play mini-games, and challenge friends.";
     const doctor = $("v18DoctorCard");
     if (doctor && !doctor.dataset.v19Updated) {
       doctor.dataset.v19Updated = "1";
       const eyebrow = doctor.querySelector(".eyebrow");
       const h2 = doctor.querySelector("h2");
       const p = doctor.querySelector("p:not(.eyebrow)");
-      if (eyebrow) eyebrow.textContent = "v19 Button System";
+      if (eyebrow) eyebrow.textContent = "Button System";
       if (h2) h2.textContent = "Buttons stable + new Home";
       if (p) p.textContent = "Use the floating Home button when you are inside another tab or panel. Scrolling should stay safe.";
     }
@@ -705,7 +705,7 @@
       updateStats();
       markPosition();
     }, 1200);
-    setTimeout(() => toast("Live Build loaded"), 1500);
+    setTimeout(() => toast("EMX Soul Arena loaded"), 1500);
   }
 
   d.addEventListener("click", handleClick, false);

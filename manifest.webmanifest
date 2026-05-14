@@ -1,7 +1,7 @@
 {
   "name": "EMX Soul Arena",
   "short_name": "EMX Arena",
-  "description": "EMX Soul Arena Live Build, campaign, collection, fun lab, multiplayer, and cinematic combat.",
+  "description": "EMX Soul Arena EMX Soul Arena, campaign, collection, fun lab, multiplayer, and cinematic combat.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

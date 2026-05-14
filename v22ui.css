@@ -1,0 +1,195 @@
+/* EMX Soul Arena v22 — UI Stability + Tab Control */
+html.v22-scroll-locked,
+body.v22-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body.v22-scroll-locked {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+}
+
+body.v22-modal-open .screen:not(.v22-active-screen) {
+  touch-action: none;
+}
+
+.overlay:not(.hidden),
+.v8-overlay:not(.hidden),
+.v9-overlay:not(.hidden),
+.v10-overlay:not(.hidden),
+.v11-overlay.open,
+.v12-overlay.show,
+.v12-choice-room.show,
+.v19-overlay.show,
+#v15SafePanel.show,
+#v22Overlay.show {
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+  touch-action: none !important;
+}
+
+.overlay:not(.hidden) .modal,
+.v8-overlay:not(.hidden) .v8-modal,
+.v9-overlay:not(.hidden) .v9-modal,
+.v10-overlay:not(.hidden) .v10-modal,
+.v11-overlay.open .v11-modal,
+.v12-overlay.show .v12-modal,
+.v12-choice-room.show .v12-choice-card-wrap,
+.v19-overlay.show .v19-modal,
+#v15SafePanel.show .v15-safe-modal,
+#v22Overlay.show .v22-modal {
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 28px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+.v22-scroll-shield {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+}
+
+.v22-stability-card {
+  margin: 14px 0;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(202, 255, 61, 0.28);
+  background:
+    radial-gradient(circle at 16% 10%, rgba(202, 255, 61, 0.14), transparent 34%),
+    radial-gradient(circle at 86% 20%, rgba(227, 71, 255, 0.18), transparent 35%),
+    linear-gradient(135deg, rgba(12, 16, 20, 0.94), rgba(45, 18, 60, 0.9));
+  box-shadow: 0 18px 54px rgba(0,0,0,.34), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+.v22-stability-card h2 { margin: 0 0 6px; }
+.v22-stability-card p { color: #c9c3e9; margin: 0 0 12px; line-height: 1.35; }
+
+.v22-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.v22-grid button,
+.v22-grid a,
+.v22-modal button,
+.v22-modal a {
+  min-height: 58px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: linear-gradient(135deg, rgba(39, 43, 77, .96), rgba(77, 45, 104, .94));
+  color: #fff;
+  font-weight: 950;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 12px 24px rgba(0,0,0,.22);
+  touch-action: manipulation;
+}
+
+.v22-grid button.primary-v22,
+.v22-modal button.primary-v22 {
+  background: linear-gradient(135deg, #caff3d, #fff, #df3dff);
+  color: #090911;
+}
+
+#v22Overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 920000;
+  display: none;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#v22Overlay.show { display: grid; }
+
+.v22-modal {
+  width: min(720px, 100%);
+  padding: 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,.16);
+  background:
+    radial-gradient(circle at top left, rgba(202, 255, 61, .12), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(227, 71, 255, .16), transparent 34%),
+    rgba(12, 13, 24, .98);
+  box-shadow: 0 28px 90px rgba(0,0,0,.56), inset 0 0 0 1px rgba(255,255,255,.04);
+}
+
+.v22-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.v22-top h2 { margin: 0; }
+.v22-top p { color: #c9c3e9; margin: 6px 0 0; line-height: 1.35; }
+.v22-close { min-width: 48px !important; min-height: 48px !important; padding: 10px !important; }
+
+.v22-info-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.v22-info {
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.v22-info strong { display: block; margin-bottom: 4px; }
+.v22-info small, .v22-info p { color: #c9c3e9; line-height: 1.35; }
+
+.v22-test-log {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(0,0,0,.3);
+  color: #dcd7ff;
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: .88rem;
+}
+
+.v22-scroll-demo {
+  height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px dashed rgba(202,255,61,.32);
+  background: rgba(255,255,255,.04);
+}
+
+.v22-scroll-demo .v22-info { margin-bottom: 10px; }
+
+@media (min-width: 680px) {
+  .v22-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

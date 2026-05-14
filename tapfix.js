@@ -600,7 +600,7 @@
     card.className = "v15-restore-card";
     card.innerHTML = `
       <div>
-        <p class="eyebrow">Live Build</p>
+        <p class="eyebrow">EMX Soul Arena</p>
         <h2>Home button + stable taps</h2>
         <p>Use Home from anywhere, open Stable Menu if needed, and play the new Fun Center games.</p>
       </div>
@@ -623,10 +623,10 @@
   }
 
   function markVersion() {
-    qsa(".version-chip").forEach((chip) => { chip.textContent = "Live Build"; });
+    qsa(".version-chip").forEach((chip) => { chip.textContent = "EMX Soul Arena"; });
     const subtitle = d.querySelector(".brand-title-card .subtitle");
     if (subtitle && /v1[0-9]/i.test(subtitle.textContent || "")) {
-      subtitle.textContent = "Live Build: Home button, clear instructions, better fight animations, boss coaching, and mini-games.";
+      subtitle.textContent = "EMX Soul Arena: Home button, clear instructions, better fight animations, boss coaching, and mini-games.";
     }
   }
 
